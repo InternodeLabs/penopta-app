@@ -69,8 +69,8 @@ Create one JSON payload with this shape. Do not include a user id — your ident
   "windowEnd": "<ISO-8601>",
   "agent": {
     "name": "<chatgpt|claude>",
-    "model": "<opus-1|gpt3.3|model-designation>",
-    "effort": "<low|medium|high|...>"
+    "model": "<exact-model-id-if-known, e.g. claude-opus-4-8; otherwise \"unknown\">",
+    "effort": "<low|medium|high if known; otherwise \"unknown\">"
   },
   "captureCoverage": {
     "enumerationAvailable": true,

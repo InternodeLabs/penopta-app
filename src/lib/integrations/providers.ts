@@ -1,7 +1,8 @@
 /**
  * Integration setup copy — edit this file to change instructions and URLs.
- * Claude uses pasteable routine instructions (skill URL + bearer key + endpoint).
- * ChatGPT still uses a skill URL with `key=…` appended.
+ * Both Claude and ChatGPT use the same pasteable instructions (skill URL +
+ * bearer key + endpoint); only the step-by-step setup copy differs. Claude
+ * pastes them into a Routine; ChatGPT pastes them into a scheduled task.
  */
 
 export type IntegrationProviderId = "claude" | "chatgpt";
@@ -86,8 +87,8 @@ export function skillUrlWithMaskedKey(
   return url.toString();
 }
 
-/** Pasteable Claude routine instructions (skill + bearer token + curl). */
-export function claudeRoutineInstructions(
+/** Pasteable sync instructions (skill + bearer token + curl). */
+export function syncRoutineInstructions(
   key: string,
   appUrl: string = getPublicAppUrl(),
 ): string {
@@ -110,11 +111,11 @@ export function claudeRoutineInstructions(
 }
 
 /** Same instructions with the key redacted for on-screen display. */
-export function claudeRoutineInstructionsMasked(
+export function syncRoutineInstructionsMasked(
   key: string,
   appUrl: string = getPublicAppUrl(),
 ): string {
-  return claudeRoutineInstructions(maskKey(key), appUrl);
+  return syncRoutineInstructions(maskKey(key), appUrl);
 }
 
 /** Prefilled Claude chat that walks the user through Penopta routine setup. */
@@ -127,6 +128,18 @@ export function claudeInstallHelpHref(): string {
   ].join(" ");
 
   return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+}
+
+/** Prefilled ChatGPT chat that walks the user through a Penopta scheduled task. */
+export function chatgptInstallHelpHref(): string {
+  const prompt = [
+    "Walk me through setting up a Penopta sync as a ChatGPT scheduled task.",
+    'I want to create a scheduled task named "Penopta Sync".',
+    "I'll paste Penopta instructions (skill URL, bearer token, and endpoint) into the task description, set it to run in a new chat, and set the schedule to repeat Hourly.",
+    "ChatGPT's UI may have changed — show me the current steps to open Scheduled tasks, create one manually, and point out where each setting lives.",
+  ].join(" ");
+
+  return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
 }
 
 export function listIntegrationProviders(): IntegrationProvider[] {
@@ -167,13 +180,22 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       icon: "G",
       setupTitle: "Connect ChatGPT",
       intro:
-        "Mint a personal key, then copy the skill URL into ChatGPT so it can install the Penopta skill and post as you.",
+        "Mint a personal key, then create a ChatGPT scheduled task that runs hourly and paste the instructions into its description.",
       steps: [
         "Mint your personal key (re-mint or invalidate anytime).",
-        "Copy the skill URL — it includes your key.",
-        "In ChatGPT, open the GPT or chat you want to connect.",
-        "Paste the URL and ask ChatGPT to install or load the skill.",
+        "Copy the Instructions below — they include the skill, your bearer token, and the sync endpoint.",
+        "In ChatGPT, open Scheduled tasks, click Create, and choose “Set up manually”.",
+        'Name the task "Penopta Sync".',
+        "Paste the Instructions into the “Describe what ChatGPT should do” field.",
+        "Under Details, set Runs in to “New chat”.",
+        "Under Frequency, set Repeat to Hourly, then save the task.",
       ],
+      notes: [],
+      troubleHelp: {
+        text: "Use ChatGPT's own chat for up-to-date setup instructions:",
+        linkLabel: "Ask ChatGPT for guidance",
+        href: chatgptInstallHelpHref(),
+      },
     },
   ];
 }

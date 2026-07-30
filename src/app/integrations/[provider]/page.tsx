@@ -8,13 +8,11 @@ import { KeyActions } from "@/components/KeyActions";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
-  claudeRoutineInstructions,
-  claudeRoutineInstructionsMasked,
   getIntegrationProvider,
   getPublicAppUrl,
   listIntegrationProviders,
-  skillUrlWithKey,
-  skillUrlWithMaskedKey,
+  syncRoutineInstructions,
+  syncRoutineInstructionsMasked,
 } from "@/lib/integrations/providers";
 import { getActiveApiKey } from "@/lib/keys/data";
 
@@ -34,17 +32,14 @@ export default async function IntegrationSetupPage({
   if (!provider) notFound();
 
   const activeKey = await getActiveApiKey(session.user.id);
-  const isClaude = provider.id === "claude";
   const appUrl = getPublicAppUrl();
-  const skillUrl = activeKey ? skillUrlWithKey(activeKey.key) : null;
-  const skillUrlDisplay = activeKey
-    ? skillUrlWithMaskedKey(activeKey.key)
-    : null;
+  const target =
+    provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
   const instructions = activeKey
-    ? claudeRoutineInstructions(activeKey.key, appUrl)
+    ? syncRoutineInstructions(activeKey.key, appUrl)
     : null;
   const instructionsDisplay = activeKey
-    ? claudeRoutineInstructionsMasked(activeKey.key, appUrl)
+    ? syncRoutineInstructionsMasked(activeKey.key, appUrl)
     : null;
 
   return (
@@ -92,10 +87,7 @@ export default async function IntegrationSetupPage({
             Your key
           </h2>
 
-          {activeKey &&
-          (isClaude
-            ? instructions && instructionsDisplay
-            : skillUrl && skillUrlDisplay) ? (
+          {activeKey && instructions && instructionsDisplay ? (
             <>
               <p className="text-sm text-muted">
                 Active until{" "}
@@ -108,31 +100,20 @@ export default async function IntegrationSetupPage({
                 })}
                 ). Re-mint to rotate, or invalidate to revoke immediately.
               </p>
-              {isClaude ? (
-                <CopyField
-                  label="Instructions"
-                  value={instructions!}
-                  displayValue={instructionsDisplay!}
-                  multiline
-                  rows={1}
-                  hint="Paste into your Claude routine. Includes your key — do not share."
-                />
-              ) : (
-                <CopyField
-                  label="Skill URL"
-                  value={skillUrl!}
-                  displayValue={skillUrlDisplay!}
-                  hint="Unique to your account — includes your key. Do not share."
-                />
-              )}
+              <CopyField
+                label="Instructions"
+                value={instructions}
+                displayValue={instructionsDisplay}
+                multiline
+                rows={1}
+                hint={`Paste into your ${target}. Includes your key — do not share.`}
+              />
               <KeyActions mode="manage" />
             </>
           ) : (
             <>
               <p className="text-sm text-muted">
-                {isClaude
-                  ? "Mint a key to unlock pasteable Claude instructions. You can re-mint or invalidate it anytime."
-                  : "Mint a key to unlock your personal skill URL. You can re-mint or invalidate it anytime."}
+                {`Mint a key to unlock pasteable instructions for your ${target}. You can re-mint or invalidate it anytime.`}
               </p>
               <KeyActions mode="mint" />
             </>
