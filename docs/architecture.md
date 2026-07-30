@@ -25,8 +25,8 @@ Defined in `src/lib/db/schema.ts`. Queried via `src/lib/projects/data.ts`.
 
 ### Reads
 
-- Library / detail: rows the viewer may see.
-- Visible if `visibility = 'public'` **or** `owner_user_id = viewer`.
+- All project routes require a session. Logged-out users are sent to sign-in.
+- Visible if `visibility = 'public'` **or** `owner_user_id = viewer` (sharing later).
 - URL param `/projects/[id]` accepts the project UUID (or slug).
 
 ## Hosting split
@@ -64,9 +64,9 @@ Same flow as Skillbase:
 2. Portal signs the user in, redirects back with `?code=&state=`.
 3. `GET /api/auth/callback` — exchange code for `{ apiToken, expiresAt, user }`,
    store in a signed httpOnly session cookie.
-4. Feature gates link to `/authenticating?returnTo=…`, which pauses briefly then
-   continues to `/api/auth/login?returnTo=…`. `/login` remains for callback
-   error display only.
+4. `/` is sign-in when logged out. Continue CTAs go to `/authenticating?returnTo=…`,
+   which pauses briefly then continues to `/api/auth/login?returnTo=…`. `/login`
+   only forwards callback errors onto `/?error=…`.
 
 Portal allowlist must include this app’s callback origin (local `3200` and the
 production hostname).
@@ -77,10 +77,11 @@ production hostname).
 src/
   app/
     api/auth/{login,callback,logout}/route.ts
-    login/page.tsx                 # error page only for happy-path UX
+    login/page.tsx                 # forwards auth errors to `/?error=`
     authenticating/page.tsx        # brief pause before PKCE login
-    page.tsx                       # public project list
-    projects/[id]/page.tsx         # public detail
+    page.tsx                       # sign-in (logged out) / workspace (logged in)
+    integrations/page.tsx          # connect agents (auth required)
+    projects/[id]/page.tsx         # project detail (auth required)
   lib/
     auth/                          # session, PKCE, portal config
     db/                            # client, schema, seed

@@ -28,8 +28,8 @@ npm run db:seed
 npm run dev -- -p 3200       # 3200 if the portal owns 3000 / skillbase owns 3100
 ```
 
-Open http://localhost:3200 — the project list is public. Sign in when you need
-gated features.
+Open http://localhost:3200 — you’ll see the sign-in page until you authenticate
+via Internode.
 
 > If the portal runs locally on port 3000, keep Penopta on 3200 and set
 > `PORTAL_BASE_URL=http://localhost:3000`.
@@ -64,7 +64,8 @@ Penopta mirrors Skillbase / the Chrome extension's PKCE flow, adapted for the we
    and receives `{ apiToken, expiresAt, user }`.
 4. The `apiToken` + user are stored in a signed, httpOnly session cookie. Use it as
    `Authorization: Bearer <apiToken>` for portal API calls.
-5. Browsing (`/` and `/projects/[id]`) is public. Auth is feature-gated.
+5. The app is login-required. `/` is the sign-in page when logged out; project
+   routes redirect to sign-in without a session.
 6. `GET|POST /api/auth/logout` clears the session and returns to `/`.
 
 ### Portal-side integration required
@@ -84,11 +85,12 @@ The portal must expose a **web** redirect flow (allowlisted origins):
 src/
   app/
     api/auth/{login,callback,logout}/route.ts  # web PKCE flow
-    login/page.tsx                             # auth error interstitial
+    login/page.tsx                             # forwards auth errors to `/`
     authenticating/page.tsx                    # brief pause before PKCE
-    page.tsx                                   # project list (public)
-    projects/[id]/page.tsx                     # project detail (public)
-  components/                                  # AppHeader, Brand, ProjectList
+    page.tsx                                   # sign-in / logged-in workspace
+    integrations/page.tsx                      # connect agents (auth required)
+    projects/[id]/page.tsx                     # project detail (auth required)
+  components/                                  # SignInCard, WorkspaceEmpty, Brand, …
   lib/auth/                                    # config, pkce, session, server helpers
   lib/db/                                      # Drizzle client, schema, seed
   lib/projects/data.ts                         # visibility-aware project reads
@@ -100,5 +102,4 @@ docs/architecture.md                           # schema, env split
 ## Data
 
 Projects are Postgres rows (`project`). Reads in `src/lib/projects/data.ts`
-return rows the viewer may see (public for everyone; owners also see private).
-Seed with `npm run db:seed`.
+return rows the signed-in viewer may see. Seed with `npm run db:seed`.

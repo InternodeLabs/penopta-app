@@ -1,44 +1,36 @@
-import { Suspense } from "react";
-
-import { AppHeader } from "@/components/AppHeader";
-import { ProjectList } from "@/components/ProjectList";
+import { SignInCard } from "@/components/SignInCard";
+import { WorkspaceEmpty } from "@/components/WorkspaceEmpty";
 import { getSession } from "@/lib/auth/server";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_state: "Your sign-in session expired. Please try again.",
+  missing_verifier: "Your sign-in session expired. Please try again.",
+  exchange_failed: "The portal rejected the sign-in. Please try again.",
+  exchange_unreachable: "Couldn't reach the auth service. Please try again.",
+  invalid_exchange_response: "Unexpected response from the auth service.",
+};
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
   const session = await getSession();
-  const params = await searchParams;
-  const raw = Array.isArray(params.q) ? params.q[0] : params.q;
-  const query = raw?.trim() || undefined;
+  const { error, returnTo } = await searchParams;
 
-  return (
-    <>
-      <AppHeader user={session?.user} />
+  if (!session) {
+    const errorMessage = error
+      ? (ERROR_MESSAGES[error] ?? "Sign-in failed. Please try again.")
+      : null;
+    const safeReturnTo =
+      returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+        ? returnTo
+        : undefined;
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-          <p className="mt-1 text-sm text-muted">
-            Public projects are visible to everyone. Sign in to see yours.
-          </p>
-        </div>
+    return (
+      <SignInCard returnTo={safeReturnTo} errorMessage={errorMessage} />
+    );
+  }
 
-        {query ? (
-          <p className="mb-6 text-sm text-muted">
-            Results for{" "}
-            <span className="font-medium text-foreground">“{query}”</span>
-          </p>
-        ) : null}
-
-        <Suspense
-          fallback={<p className="text-sm text-muted">Loading projects…</p>}
-        >
-          <ProjectList viewerUserId={session?.user.id} query={query} />
-        </Suspense>
-      </main>
-    </>
-  );
+  return <WorkspaceEmpty user={session.user} />;
 }

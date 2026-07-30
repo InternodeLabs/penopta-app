@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/AppHeader";
 import { getSession } from "@/lib/auth/server";
+import { loginStartHref } from "@/lib/auth/urls";
 import { getVisibleProject } from "@/lib/projects/data";
 
 export default async function ProjectDetailPage({
@@ -12,13 +13,14 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
   const session = await getSession();
-  const project = await getVisibleProject(id, session?.user.id);
+  if (!session) redirect(loginStartHref(`/projects/${id}`));
 
+  const project = await getVisibleProject(id, session.user.id);
   if (!project) notFound();
 
   return (
     <>
-      <AppHeader user={session?.user} returnTo={`/projects/${id}`} />
+      <AppHeader user={session.user} returnTo={`/projects/${id}`} />
 
       <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
         <Link

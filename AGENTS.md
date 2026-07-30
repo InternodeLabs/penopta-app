@@ -15,17 +15,18 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 ### Auth
 
 - Penopta is an auth _consumer_ of Internode (`portal-frontend`). Do not add a local identity provider.
-- Browsing (`/`, `/projects/[id]`) is **public**. Auth gates features, not pages.
+- The app is **login-required**. There is no logged-out product UI and no public project list.
+- `/` is the sign-in page when logged out (mockup-styled card). After sign-in it is the workspace.
 - Sign-in CTAs go to `/authenticating?returnTo=…` (brief interstitial), which then
   continues to `/api/auth/login?returnTo=…` (Internode PKCE start). Do **not** send
-  users to `/login` as the normal path — that page is for auth _errors_ only.
+  users to `/login` as the normal path — that route only forwards auth errors onto `/?error=…`.
 - Session user id comes from the portal (`session.user.id`). Use that string as `owner_user_id`.
 
 ### Data model
 
 - Plain Postgres + Drizzle. Keep ownership on portal user ids.
 - `project` is the starter owned entity (`public` | `private` visibility).
-- Public / logged-out reads: `visibility = 'public'`. Logged-in owners also see their private rows.
+- All project reads require a session. Owners see their rows; `visibility` still matters for sharing later.
 
 ### Environments
 

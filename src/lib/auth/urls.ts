@@ -1,7 +1,7 @@
 /**
- * Happy-path sign-in entry. Shows a brief "Authenticating…" interstitial, then
- * continues to `/api/auth/login` (Internode PKCE). Do not use `/login` here —
- * that page is for auth errors only.
+ * Start Internode PKCE after the brief `/authenticating` interstitial.
+ * Logged-out users land on `/` (sign-in). Do not send them to `/login` —
+ * that route only forwards auth errors onto `/`.
  */
 export function loginStartHref(returnTo?: string | null): string {
   if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
