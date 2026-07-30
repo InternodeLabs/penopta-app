@@ -23,6 +23,12 @@ This is semantic synchronization, not a claim of complete account-wide archival.
 
 Exclude this scheduled task’s own messages and reports from ingestion, so it does not recursively capture itself.
 
+## Private threads — never sync
+
+Skip any chat/task whose **name/title** begins with `PRIVATE:` (case-insensitive). For example, "Private: doctor questions" and "PRIVATE: experiment drugs" must be excluded from the sync entirely — do not read them, do not include them in `threads`, and do not report their contents anywhere in the payload.
+
+Match on the title **prefix only**. Only skip when the title *starts with* that marker — a title that merely mentions the word "private" elsewhere (e.g. "Make this repo private") is not excluded, and the marker appearing in message text rather than the title does not exclude a thread. These threads are intentionally private, so treat them as out of scope rather than unavailable: do not count them in `threadsUnavailable` or flag them in `captureCoverage.limitation`.
+
 ## Gather source material
 
 For each eligible chat/task:
@@ -136,6 +142,7 @@ You must actually deliver the payload. Collecting context without delivering it 
 
 ## Safety and quality rules
 
+- Never sync a thread whose title starts with `PRIVATE:` (case-insensitive); exclude it entirely, matching on the title prefix only.
 - Never invent transcript content, a thread, a checkpoint, or delivery success.
 - Never include private reasoning, credentials, tokens, or hidden tool output in the payload or transcripts.
 - Do not modify source chats/tasks.

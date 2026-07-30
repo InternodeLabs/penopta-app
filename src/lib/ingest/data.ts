@@ -22,9 +22,19 @@ function parseOptionalDate(value: string | null): Date | null {
 }
 
 /**
+ * Titles that start with `PRIVATE:` (case-insensitive, optional leading
+ * whitespace) are intentionally out of scope. Match the title prefix only —
+ * the marker in message text or mid-title does not count.
+ */
+export function isPrivateThreadTitle(title: string): boolean {
+  return /^\s*private:/i.test(title);
+}
+
+/**
  * Persist a validated sync payload for `ownerUserId`.
  * Inserts an immutable run row, upserts current thread state, and stores
- * per-thread snapshots for history.
+ * per-thread snapshots for history. Threads whose titles start with
+ * `PRIVATE:` are dropped before write (server-side guard matching the skill).
  */
 export async function ingestAgentSync(
   ownerUserId: string,
@@ -45,6 +55,9 @@ export async function ingestAgentSync(
   if (existing[0]) throw new DuplicateRunError(existing[0]);
 
   const syncedAt = new Date();
+  const threads = payload.threads.filter(
+    (thread) => !isPrivateThreadTitle(thread.title),
+  );
 
   const inserted = await db
     .insert(agentSyncRuns)
@@ -67,7 +80,7 @@ export async function ingestAgentSync(
   const run = inserted[0];
   if (!run) throw new Error("Failed to insert agent sync run");
 
-  for (const thread of payload.threads) {
+  for (const thread of threads) {
     const threadValues = {
       orgId,
       ownerUserId,
@@ -133,5 +146,5 @@ export async function ingestAgentSync(
     });
   }
 
-  return { run, threadsUpserted: payload.threads.length };
+  return { run, threadsUpserted: threads.length };
 }
