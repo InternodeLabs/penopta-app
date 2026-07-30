@@ -48,6 +48,8 @@ export type IntegrationProvider = {
   steps: string[];
   /** Extra notes at the bottom */
   notes?: string[];
+  /** Optional “having trouble?” helper shown at the end of the MCP section */
+  mcpTroubleHelp?: IntegrationTroubleHelp;
   /** Optional “having trouble?” helper with an external guided link */
   troubleHelp?: IntegrationTroubleHelp;
   /**
@@ -164,6 +166,28 @@ export function chatgptInstallHelpHref(): string {
   return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
 }
 
+/** Prefilled Claude chat that walks the user through adding the Penopta MCP connector. */
+export function claudeMcpHelpHref(): string {
+  const prompt = [
+    "Walk me through adding Penopta as a custom MCP connector in Claude.",
+    "I want to add a remote MCP server named \"Penopta\" and paste in its remote MCP server URL, then approve the Penopta sign-in (OAuth) prompt.",
+    "Claude's UI may have changed — show me the current steps to open Settings > Connectors, add a custom connector, and point out where each setting lives.",
+  ].join(" ");
+
+  return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+}
+
+/** Prefilled ChatGPT chat that walks the user through adding the Penopta MCP server. */
+export function chatgptMcpHelpHref(): string {
+  const prompt = [
+    "Walk me through adding Penopta as an MCP server in ChatGPT.",
+    "I want to add a Streamable HTTP MCP server named \"Penopta\" and paste in its MCP server URL, then approve the Penopta sign-in (OAuth) prompt.",
+    "ChatGPT's UI may have changed — show me the current steps to open Settings > Plugins > MCPs, add a server, and point out where each setting lives.",
+  ].join(" ");
+
+  return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
+}
+
 /** Open Claude with the sync instructions prefilled so the user can try a one-off run. */
 export function claudeTryNowHref(instructions: string): string {
   return `https://claude.ai/new?q=${encodeURIComponent(instructions)}`;
@@ -186,7 +210,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       icon: Anthropic,
       setupTitle: "Connect Claude",
       intro:
-        "Add Penopta as an MCP connector for live context in chat, or optionally set up an hourly sync routine.",
+        "Add Penopta as an MCP connector for live context in chat, and/or optionally set up an hourly sync routine.",
       mcpSteps: [
         "In Claude, open **Settings** and select **Connectors** under Customize.",
         "Click **Add**, then choose **Add custom connector**.",
@@ -203,6 +227,11 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Set the schedule to **Hourly**, then create the routine.",
       ],
       notes: [],
+      mcpTroubleHelp: {
+        text: "Use Claude's own chat for up-to-date setup instructions:",
+        linkLabel: "Ask Claude for guidance",
+        href: claudeMcpHelpHref(),
+      },
       troubleHelp: {
         text: "Use Claude's own chat for up-to-date setup instructions:",
         linkLabel: "Ask Claude for guidance",
@@ -239,6 +268,11 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Under Frequency, set Repeat to Hourly, then save the task.",
       ],
       notes: [],
+      mcpTroubleHelp: {
+        text: "Use ChatGPT's own chat for up-to-date setup instructions:",
+        linkLabel: "Ask ChatGPT for guidance",
+        href: chatgptMcpHelpHref(),
+      },
       troubleHelp: {
         text: "Use ChatGPT's own chat for up-to-date setup instructions:",
         linkLabel: "Ask ChatGPT for guidance",

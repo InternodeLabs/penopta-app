@@ -92,7 +92,7 @@ export default async function IntegrationSetupPage({
         <section className="mt-8 max-w-2xl space-y-4">
           <div>
             <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-              Live connection (MCP)
+              Chat with Penopta in {provider.name} (MCP)
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               Add Penopta as an MCP server in {provider.name}. It signs in with
@@ -110,11 +110,24 @@ export default async function IntegrationSetupPage({
             value={mcpUrl}
             hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
           />
+          {provider.mcpTroubleHelp ? (
+            <p className="text-sm text-muted">
+              {provider.mcpTroubleHelp.text}{" "}
+              <a
+                href={provider.mcpTroubleHelp.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
+              >
+                {provider.mcpTroubleHelp.linkLabel}
+              </a>
+            </p>
+          ) : null}
         </section>
 
         <section className="mt-8 max-w-2xl">
           <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-            Scheduled sync
+            Sync your conversations to Penopta automatically
           </h2>
           <p className="mt-2 mb-3 max-w-2xl text-sm leading-relaxed text-muted">
             Optional: also push a periodic snapshot of your conversations into

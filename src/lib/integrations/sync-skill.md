@@ -111,58 +111,55 @@ Create one JSON payload with this shape. Do not include a user id — your ident
 }
 ```
 
-## Delivery order
+## Delivery
 
-Use this delivery priority:
+You must actually deliver the payload. Collecting context without delivering it is a failed run. Use this priority:
 
-1. **Preferred: Internode API endpoint**
+1. **Preferred: the Penopta MCP tool (no token needed)**
 
-   Send the JSON payload to:
-
-   ```text
-   POST <INTERNODE_THREAD_CONTEXT_SYNC_URL>
-   Authorization: Bearer <AUTH_TOKEN>
-   environment configuration>
-   Content-Type: application/json
-   Idempotency-Key: <runId>
-   ```
-
-   A successful response (HTTP 200/201) returns `{ "ok": true, "runId": "...", "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>" }`. Save `checkpoint` (equal to your `windowEnd`) as the new checkpoint for the next run. Treat any non-successful response as a failed run. Do not log secrets, tokens, or full authorization headers.
-
-2. **Fallback: writable Internode MCP tool**
-
-   If the API endpoint is unavailable but a writable Internode MCP tool is available, use a tool equivalent to:
+   If a Penopta MCP connector is available, deliver by calling its write tool:
 
    ```text
-   upsert_thread_context_sync({
-     runId,
-     windowStart,
-     windowEnd,
-     payload,
-     idempotencyKey
-   })
+   sync_threads(<the JSON payload above>)
    ```
 
-   The MCP tool must confirm successful receipt and return the new checkpoint before the run is considered complete.
+   Identity and target org come from your authenticated connection, so **do not** pass an API key, bearer token, or `penopta_user_id` — leave them out entirely. This is the most reliable path because there is no credential to handle. A successful call returns `{ "ok": true, "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>" }`. Runs are idempotent by `runId`; a repeated `runId` returns `{ "ok": true, "duplicate": true, ... }`, which is also success.
+
+2. **Fallback: HTTP POST with curl**
+
+   If no Penopta MCP tool is available, POST the payload to the endpoint from your instructions using the Bearer token from your instructions. Prefer running it as a real shell command with `curl` (write the payload to `payload.json` first), rather than describing it:
+
+   ```bash
+   curl -sS -X POST "<ENDPOINT_FROM_YOUR_INSTRUCTIONS>" \
+     -H "Authorization: Bearer <TOKEN_FROM_YOUR_INSTRUCTIONS>" \
+     -H "Content-Type: application/json" \
+     -d @payload.json
+   ```
+
+   Rules for this path — follow them exactly, or the request fails with `401 Invalid or missing API key`:
+   - **Always** send the `Authorization: Bearer <token>` header on the request. The "never transmit credentials" rule below applies to the JSON body and transcripts, **not** to this header — the header is how you authenticate and is required.
+   - Put the token **only** in the header. Never place it in the JSON body, in `sourceActivity`, or anywhere in the payload.
+   - Use the token exactly as given (no quotes, whitespace, or truncation). If your instructions have no token, treat delivery as unavailable (path 3) rather than sending an unauthenticated request.
+   - Do not skip or exclude the sync task itself from ingestion just because its instructions contain the token — collect it like any other thread, but keep the token out of the payload text.
+
+   A successful response (HTTP 200/201) returns `{ "ok": true, "runId": "...", "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>" }`. Save `checkpoint` (equal to your `windowEnd`) as the new checkpoint for the next run. Treat any non-2xx response as a failed run and do not advance the checkpoint. Do not log the token or full `Authorization` header.
 
 3. **No write capability available**
 
-   If neither a configured API endpoint nor a writable MCP tool is available:
+   If neither a Penopta MCP tool nor a usable endpoint + token is available:
    - do not pretend delivery succeeded
-   - produce the JSON payload as the scheduled-task result
-   - clearly report: “Context was collected but not delivered: no configured API endpoint or writable MCP tool.”
+   - produce the JSON payload as the run result
+   - clearly report: “Context was collected but not delivered: no Penopta MCP tool and no usable endpoint/token.”
    - include the exact configuration needed to enable delivery
 
 ## Safety and quality rules
 
 - Never invent transcript content, a thread, a checkpoint, or delivery success.
-- Never include private reasoning, credentials, tokens, or hidden tool output.
+- Never include private reasoning, credentials, tokens, or hidden tool output **in the payload or transcripts**. This does not mean dropping the `Authorization` header — that header is required for the curl path (see Delivery).
 - Do not modify source chats/tasks.
-- Do not update the checkpoint until Internode acknowledges receipt.
+- Do not update the checkpoint until Penopta acknowledges receipt.
 - If source access is partial, report the limitation explicitly in `captureCoverage.limitation`.
 - Prefer accurate, useful working-state summaries over generic summaries.
 - Never summarize or truncate `sourceActivity` text to shrink the payload; split into ≤4.5 MB requests instead.
 - Keep each thread’s handoff focused enough that another agent can understand it in under one minute.
 - At the end of each run, report the number of reviewed, changed, delivered, skipped, and unavailable threads.
-
-You would configure the hourly schedule around that prompt and provide `INTERNODE_THREAD_CONTEXT_SYNC_URL` plus its token `AUTH_TOKEN` securely. The clean next implementation step is a small idempotent Internode ingestion endpoint that returns the checkpoint; then MCP can remain an optional convenience path.

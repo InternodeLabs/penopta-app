@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { getPublicAppUrl } from "@/lib/integrations/providers";
+import { DuplicateRunError, ingestAgentSync } from "@/lib/ingest/data";
+import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
 import type { ApiKeyOwner } from "@/lib/keys/data";
 import {
   mcpGetProjectContext,
@@ -125,6 +127,64 @@ export function buildPenoptaMcpServer(
       const thread = await mcpGetThread(owner, thread_id);
       if (!thread) return errorResult(`No thread found for id "${thread_id}".`);
       return jsonResult(thread);
+    },
+  );
+
+  server.registerTool(
+    "sync_threads",
+    {
+      title: "Sync threads",
+      description:
+        "Deliver a windowed thread-context sync to Penopta. Prefer this over the " +
+        "curl/HTTP endpoint: identity and target org are taken from your " +
+        "authenticated connection, so no API key or bearer token is needed and " +
+        "none should be included in the payload. Send the same JSON described in " +
+        "the sync skill (schemaVersion, runId, window, agent, captureCoverage, " +
+        "threads, runSummary). Runs are idempotent by runId. On success it " +
+        "returns { ok: true, checkpoint }; save the checkpoint before the next " +
+        "run and treat any error result as a failed delivery.",
+      inputSchema: agentSyncPayloadSchema,
+    },
+    async (payload) => {
+      if (
+        payload.penopta_user_id &&
+        payload.penopta_user_id !== owner.ownerUserId
+      ) {
+        return errorResult(
+          "penopta_user_id does not match the authenticated user. Omit it — " +
+            "identity is resolved from your connection.",
+        );
+      }
+      try {
+        const { run, threadsUpserted } = await ingestAgentSync(
+          owner.ownerUserId,
+          owner.orgId,
+          payload,
+        );
+        const checkpoint = run.windowEnd.toISOString();
+        return jsonResult({
+          ok: true,
+          runId: run.runId,
+          syncRunId: run.id,
+          threadsUpserted,
+          checkpoint,
+          cursor: checkpoint,
+        });
+      } catch (err) {
+        if (err instanceof DuplicateRunError) {
+          const checkpoint = err.existing.windowEnd.toISOString();
+          return jsonResult({
+            ok: true,
+            runId: err.existing.runId,
+            syncRunId: err.existing.id,
+            duplicate: true,
+            checkpoint,
+            cursor: checkpoint,
+          });
+        }
+        console.error("mcp sync_threads", err);
+        return errorResult("Failed to ingest sync payload.");
+      }
     },
   );
 
