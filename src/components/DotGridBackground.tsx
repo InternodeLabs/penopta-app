@@ -9,8 +9,8 @@ const MAX_BUMP = 3.4; // extra radius added at the cursor's center
 const INFLUENCE = 170; // px radius of the spherical "pull"
 const PULL_FRAC = 0.42; // max fraction of the distance a dot warps toward cursor
 const BASE_ALPHA = 0.45;
-const FOCUS_DELAY = 220; // ms of stillness before the ramp begins to build
-const FOCUS_RAMP = 1300; // ms over which scale/pull eases fully in
+const FOCUS_DELAY = 140; // ms of stillness before the ramp begins to build
+const FOCUS_RAMP = 650; // ms over which scale/pull eases fully in
 
 // Resting dot color -> color at the cursor center.
 const BASE_RGB = [212, 212, 216] as const; // zinc-300
@@ -93,11 +93,11 @@ export function DotGridBackground() {
               // Scale + warp only after the cursor settles (see `focus`).
               const ff = f * focus;
 
-              // Spacetime warp: pull each dot toward the cursor by a fraction
-              // of its own distance, so dots cluster tighter near the center.
+              // Spacetime warp: push each dot away from the cursor by a fraction
+              // of its own distance, opening a void that widens near the center.
               const pull = PULL_FRAC * ff;
-              drawX = x - dx * pull;
-              drawY = y - dy * pull;
+              drawX = x + dx * pull;
+              drawY = y + dy * pull;
 
               radius = BASE_RADIUS + MAX_BUMP * ff;
               r = BASE_RGB[0] + (PEAK_RGB[0] - BASE_RGB[0]) * f;
