@@ -131,7 +131,8 @@ export function NewProjectDialog({
                           {thread.title || "Untitled thread"}
                         </span>
                         <span className="mt-0.5 block truncate text-[11px] text-muted">
-                          {thread.lastAgentName} · {thread.status}
+                          {thread.ownerName} · {thread.lastAgentName} ·{" "}
+                          {thread.status}
                         </span>
                       </span>
                     </label>

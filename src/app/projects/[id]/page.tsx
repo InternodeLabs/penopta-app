@@ -14,6 +14,7 @@ import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { getVisibleProject } from "@/lib/projects/data";
 import { listAgentThreads, listProjectThreads } from "@/lib/threads/data";
+import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
 function initials(user: SessionUser): string {
   const base = user.name || user.email || "?";
@@ -48,10 +49,13 @@ export default async function ProjectDetailPage({
     listAgentThreads(activeOrg.id),
   ]);
 
-  const memberNames = await lookupPortalUsers(
-    members.map((m) => m.userId),
-    session.apiToken,
-  );
+  const [memberNames, ownerNames] = await Promise.all([
+    lookupPortalUsers(
+      members.map((m) => m.userId),
+      session.apiToken,
+    ),
+    resolveThreadOwnerNames(orgThreads, session),
+  ]);
   const memberLabels = members.map((m) =>
     m.userId === session.user.id
       ? "You"
@@ -60,6 +64,9 @@ export default async function ProjectDetailPage({
 
   const user = session.user;
   const displayName = user.name || user.email;
+  const agentCount = new Set(
+    orgThreads.map((t) => t.lastAgentName).filter(Boolean),
+  ).size;
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -82,9 +89,23 @@ export default async function ProjectDetailPage({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
-          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Threads
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
+              Agent Threads
+            </p>
+            <ManageProjectThreads
+              projectId={project.id}
+              threads={orgThreads.map((thread) => ({
+                id: thread.id,
+                title: thread.title,
+                lastAgentName: thread.lastAgentName,
+                status: thread.status,
+                ownerName:
+                  ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
+              }))}
+              selectedIds={threads.map((thread) => thread.id)}
+            />
+          </div>
           {threads.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No threads yet</p>
           ) : (
@@ -102,16 +123,6 @@ export default async function ProjectDetailPage({
               ))}
             </ul>
           )}
-          <ManageProjectThreads
-            projectId={project.id}
-            threads={orgThreads.map((thread) => ({
-              id: thread.id,
-              title: thread.title,
-              lastAgentName: thread.lastAgentName,
-              status: thread.status,
-            }))}
-            selectedIds={threads.map((thread) => thread.id)}
-          />
         </div>
 
         <div className="border-t border-border px-4 py-4">
@@ -179,12 +190,18 @@ export default async function ProjectDetailPage({
               {displayName}
             </span>
           </div>
-          <Link
-            href="/integrations"
-            className="mt-3 flex h-9 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
-          >
-            Connect your agent
-          </Link>
+          {orgThreads.length > 0 ? (
+            <p className="mt-3 text-sm text-muted">
+              {agentCount} {agentCount === 1 ? "agent" : "agents"}
+            </p>
+          ) : (
+            <Link
+              href="/integrations"
+              className="mt-3 flex h-9 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
+            >
+              Connect an agent
+            </Link>
+          )}
         </section>
 
         <section>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { OrgSettingsDialog } from "@/components/OrgSettingsDialog";
 import { createOrgAction, switchOrgAction } from "@/lib/orgs/actions";
 
 export interface OrgSwitcherItem {
@@ -16,8 +17,9 @@ export interface OrgSwitcherItem {
 }
 
 /**
- * Footer control (matches the "Integrations" block): shows the active org and,
- * when clicked, opens an upward popover to switch orgs or create a new one.
+ * Footer control: shows the active org and, when clicked, opens an upward
+ * popover to switch orgs, create one, manage the active org, or open
+ * integrations.
  */
 export function OrgSwitcher({
   activeOrgId,
@@ -29,6 +31,7 @@ export function OrgSwitcher({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,7 +83,6 @@ export function OrgSwitcher({
 
   return (
     <div ref={rootRef} className="relative">
-      
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -173,6 +175,19 @@ export function OrgSwitcher({
 
           <div className="my-1 h-px bg-border" />
 
+          {active ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setSettingsOpen(true);
+              }}
+              className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-background hover:text-foreground"
+            >
+              Manage organization
+            </button>
+          ) : null}
+
           <Link
             href="/integrations"
             onClick={() => setOpen(false)}
@@ -181,6 +196,18 @@ export function OrgSwitcher({
             Manage integrations
           </Link>
         </div>
+      ) : null}
+
+      {active ? (
+        <OrgSettingsDialog
+          open={settingsOpen}
+          onClose={() => {
+            setSettingsOpen(false);
+            router.refresh();
+          }}
+          orgId={active.id}
+          orgName={active.name}
+        />
       ) : null}
     </div>
   );

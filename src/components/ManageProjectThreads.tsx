@@ -12,6 +12,7 @@ export type ThreadOption = {
   title: string;
   lastAgentName: string;
   status: string;
+  ownerName: string;
 };
 
 /** Sidebar control + dialog to choose which agent threads belong to a project. */
@@ -69,10 +70,11 @@ export function ManageProjectThreads({
       <button
         type="button"
         onClick={openDialog}
-        className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface text-xs font-medium text-foreground transition hover:bg-background"
+        aria-label="Add threads"
+        title="Add threads"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-foreground"
       >
         <Plus aria-hidden className="h-3.5 w-3.5" />
-        Add threads
       </button>
 
       {open ? (
@@ -119,7 +121,8 @@ export function ManageProjectThreads({
                               {thread.title || "Untitled thread"}
                             </span>
                             <span className="mt-0.5 block truncate text-[11px] text-muted">
-                              {thread.lastAgentName} · {thread.status}
+                              {thread.ownerName} · {thread.lastAgentName} ·{" "}
+                              {thread.status}
                             </span>
                           </span>
                         </label>

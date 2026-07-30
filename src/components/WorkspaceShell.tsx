@@ -53,6 +53,8 @@ export function WorkspaceShell({
               title: thread.title,
               lastAgentName: thread.lastAgentName,
               status: thread.status,
+              ownerName:
+                ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
             }))}
           />
         </div>

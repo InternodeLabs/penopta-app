@@ -85,6 +85,18 @@ export async function listOrgMembers(
     .orderBy(desc(organizationMemberships.role), asc(organizationMemberships.createdAt));
 }
 
+/** Fetch an org by id, or null when missing. */
+export async function getOrgById(
+  orgId: string,
+): Promise<OrganizationRow | null> {
+  const rows = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 /**
  * Ensure a user has a personal org and returns it. Safe to call concurrently:
  * the personal slug is deterministic, so inserts collapse via ON CONFLICT.
@@ -170,6 +182,126 @@ export async function setActiveOrg(
       target: userActiveOrgs.userId,
       set: { orgId, updatedAt: new Date() },
     });
+}
+
+export class OrgNotFoundError extends Error {
+  constructor() {
+    super("Organization not found.");
+    this.name = "OrgNotFoundError";
+  }
+}
+
+export class LastOwnerError extends Error {
+  constructor(message = "An organization needs at least one owner.") {
+    super(message);
+    this.name = "LastOwnerError";
+  }
+}
+
+export class AlreadyMemberError extends Error {
+  constructor() {
+    super("That person is already a member.");
+    this.name = "AlreadyMemberError";
+  }
+}
+
+/** Rename an org (does not change the slug). */
+export async function renameOrg(
+  orgId: string,
+  name: string,
+): Promise<OrganizationRow> {
+  const trimmed = name.trim();
+  const [row] = await db
+    .update(organizations)
+    .set({ name: trimmed, updatedAt: new Date() })
+    .where(eq(organizations.id, orgId))
+    .returning();
+  if (!row) throw new OrgNotFoundError();
+  return row;
+}
+
+/** Add a portal user to an org with the given role. */
+export async function addOrgMember(
+  orgId: string,
+  userId: string,
+  role: OrgRole,
+): Promise<OrganizationMembershipRow> {
+  const existing = await getMembershipRole(orgId, userId);
+  if (existing) throw new AlreadyMemberError();
+
+  const [row] = await db
+    .insert(organizationMemberships)
+    .values({ orgId, userId, role })
+    .returning();
+  if (!row) throw new Error("Failed to add member");
+  return row;
+}
+
+/** Change a member's role. Refuses to demote the last owner. */
+export async function updateOrgMemberRole(
+  orgId: string,
+  userId: string,
+  role: OrgRole,
+): Promise<OrganizationMembershipRow> {
+  const current = await getMembershipRole(orgId, userId);
+  if (!current) throw new OrgNotFoundError();
+
+  if (current === "owner" && role === "member") {
+    const owners = await db
+      .select({ id: organizationMemberships.id })
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.orgId, orgId),
+          eq(organizationMemberships.role, "owner"),
+        ),
+      );
+    if (owners.length <= 1) throw new LastOwnerError();
+  }
+
+  const [row] = await db
+    .update(organizationMemberships)
+    .set({ role })
+    .where(
+      and(
+        eq(organizationMemberships.orgId, orgId),
+        eq(organizationMemberships.userId, userId),
+      ),
+    )
+    .returning();
+  if (!row) throw new OrgNotFoundError();
+  return row;
+}
+
+/** Remove a member. Refuses to remove the last owner. */
+export async function removeOrgMember(
+  orgId: string,
+  userId: string,
+): Promise<void> {
+  const current = await getMembershipRole(orgId, userId);
+  if (!current) throw new OrgNotFoundError();
+
+  if (current === "owner") {
+    const owners = await db
+      .select({ id: organizationMemberships.id })
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.orgId, orgId),
+          eq(organizationMemberships.role, "owner"),
+        ),
+      );
+    if (owners.length <= 1) throw new LastOwnerError();
+  }
+
+  await db
+    .delete(organizationMemberships)
+    .where(
+      and(
+        eq(organizationMemberships.orgId, orgId),
+        eq(organizationMemberships.userId, userId),
+      ),
+    );
 }
 
 /**
