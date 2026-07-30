@@ -31,6 +31,8 @@ function renderStepText(step: string) {
   );
 }
 
+const TEST_MCP_VERIFICATION = false
+
 export default async function IntegrationSetupPage({
   params,
 }: {
@@ -48,7 +50,7 @@ export default async function IntegrationSetupPage({
 
   const ProviderIcon = provider.icon;
   const mcpVerification = await getLatestMcpVerification(session.user.id);
-  const mcpVerified = Boolean(mcpVerification);
+  const mcpVerified = TEST_MCP_VERIFICATION || Boolean(mcpVerification);
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
@@ -201,26 +203,14 @@ export default async function IntegrationSetupPage({
 
         <section className="mt-8 max-w-2xl space-y-4">
           <CopyField
-            label="Instructions"
+            label="Copy & Paste these instructions"
             value={instructions}
             multiline
             rows={1}
             hint={`Paste into your ${target}. Delivery runs through the Penopta MCP connector — no key or token included.`}
           />
-          {provider.tryNowHref ? (
-            <div className="mt-8 text-sm text-muted">
-              Want to try it out before you add it to a schedule,{" "}
-              <a
-                href={provider.tryNowHref(instructions)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
-              >
-                run it now
-              </a>
-            </div>
-          ) : null}
         </section>
+
         {provider.troubleHelp ? (
           <p className="mt-3 max-w-2xl text-sm text-muted">
             {provider.troubleHelp.text}{" "}
