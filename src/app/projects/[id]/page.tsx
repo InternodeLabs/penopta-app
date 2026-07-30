@@ -5,6 +5,10 @@ import { notFound, redirect } from "next/navigation";
 import { BrandLogo } from "@/components/Brand";
 import { ManageProjectThreads } from "@/components/ManageProjectThreads";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
+import {
+  buildProjectActivityFeed,
+  ProjectActivityFeed,
+} from "@/components/ProjectActivityFeed";
 import { ProjectHeader } from "@/components/ProjectHeader";
 import { lookupPortalUsers } from "@/lib/auth/portal-users";
 import { getSession } from "@/lib/auth/server";
@@ -67,6 +71,8 @@ export default async function ProjectDetailPage({
   const agentCount = new Set(
     orgThreads.map((t) => t.lastAgentName).filter(Boolean),
   ).size;
+  const activityLines = buildProjectActivityFeed(threads);
+  const recentActivity = activityLines.slice(-5).reverse();
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -137,16 +143,32 @@ export default async function ProjectDetailPage({
       <div className="flex min-w-0 flex-1 flex-col">
         <ProjectHeader projectId={project.id} name={project.name} />
 
-        <main className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-skeleton text-muted">
-            <MessageSquare aria-hidden className="h-5 w-5" strokeWidth={1.5} />
-          </span>
-          <p className="mt-4 text-sm font-medium text-foreground">
-            No messages yet
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            Add an agent and a member to start collaborating
-          </p>
+        <main
+          className={
+            activityLines.length > 0
+              ? "flex flex-1 flex-col overflow-y-auto p-6"
+              : "flex flex-1 flex-col items-center justify-center p-6 text-center"
+          }
+        >
+          {activityLines.length > 0 ? (
+            <ProjectActivityFeed lines={activityLines} />
+          ) : (
+            <>
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-skeleton text-muted">
+                <MessageSquare
+                  aria-hidden
+                  className="h-5 w-5"
+                  strokeWidth={1.5}
+                />
+              </span>
+              <p className="mt-4 text-sm font-medium text-foreground">
+                No messages yet
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                Add an agent and a member to start collaborating
+              </p>
+            </>
+          )}
         </main>
 
         <div className="border-t border-border bg-surface px-4 py-3">
@@ -229,7 +251,21 @@ export default async function ProjectDetailPage({
           <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
             Activity
           </p>
-          <p className="mt-2 text-sm text-muted">No recent activity</p>
+          {recentActivity.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">No recent activity</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {recentActivity.map((line) => (
+                <li
+                  key={line.key}
+                  className="truncate text-sm text-muted"
+                  title={`${line.timeLabel} [${line.threadTitle}] posted activity`}
+                >
+                  {line.timeLabel} [{line.threadTitle}]
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </aside>
     </div>
