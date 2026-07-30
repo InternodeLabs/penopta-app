@@ -316,3 +316,104 @@ export const projectThreads = pgTable(
 );
 
 export type ProjectThreadRow = typeof projectThreads.$inferSelect;
+
+/**
+ * OAuth 2.1 client registered with Penopta's MCP authorization server. Clients
+ * are created via Dynamic Client Registration (RFC 7591) or seeded from a Client
+ * ID Metadata Document (CIMD) URL. All clients are public (PKCE, no secret);
+ * ChatGPT/Claude connectors register themselves here before authorizing.
+ */
+export const oauthClients = pgTable(
+  "oauth_client",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Public client identifier handed to the client (opaque or a CIMD URL). */
+    clientId: text("client_id").notNull().unique(),
+    clientName: text("client_name"),
+    /** Allowed redirect URIs (exact match required at authorize time). */
+    redirectUris: jsonb("redirect_uris").$type<string[]>().notNull().default([]),
+    grantTypes: jsonb("grant_types")
+      .$type<string[]>()
+      .notNull()
+      .default(["authorization_code", "refresh_token"]),
+    tokenEndpointAuthMethod: text("token_endpoint_auth_method")
+      .notNull()
+      .default("none"),
+    /** Set when the client_id is a CIMD URL we resolved metadata from. */
+    metadataUrl: text("metadata_url"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("oauth_client_client_id_idx").on(t.clientId)],
+);
+
+export type OAuthClientRow = typeof oauthClients.$inferSelect;
+
+/**
+ * A short-lived authorization code issued after the user approves a connector.
+ * Bound to the portal user, the client, the redirect URI, and the PKCE
+ * challenge. Single-use: `consumedAt` is stamped on redemption.
+ */
+export const oauthAuthorizationCodes = pgTable(
+  "oauth_authorization_code",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** SHA-256 hash of the issued code (the raw code is never stored). */
+    codeHash: text("code_hash").notNull().unique(),
+    clientId: text("client_id").notNull(),
+    /** Portal user id who approved the grant. */
+    userId: text("user_id").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    scope: text("scope").notNull().default(""),
+    /** RFC 8707 resource indicator the token is bound to. */
+    resource: text("resource"),
+    codeChallenge: text("code_challenge").notNull(),
+    codeChallengeMethod: text("code_challenge_method").notNull().default("S256"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("oauth_authorization_code_client_idx").on(t.clientId)],
+);
+
+export type OAuthAuthorizationCodeRow =
+  typeof oauthAuthorizationCodes.$inferSelect;
+
+/**
+ * An issued access token (with optional refresh token) for an MCP connector.
+ * Tokens are opaque and stored only as SHA-256 hashes; lookup resolves the
+ * portal user, and the active org is resolved live per request. Revoke by
+ * stamping `revokedAt`.
+ */
+export const oauthTokens = pgTable(
+  "oauth_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accessTokenHash: text("access_token_hash").notNull().unique(),
+    refreshTokenHash: text("refresh_token_hash").unique(),
+    clientId: text("client_id").notNull(),
+    /** Portal user id the token acts as. */
+    userId: text("user_id").notNull(),
+    scope: text("scope").notNull().default(""),
+    resource: text("resource"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }).notNull(),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      withTimezone: true,
+    }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("oauth_token_user_idx").on(t.userId),
+    index("oauth_token_client_idx").on(t.clientId),
+  ],
+);
+
+export type OAuthTokenRow = typeof oauthTokens.$inferSelect;

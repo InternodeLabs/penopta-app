@@ -16,10 +16,12 @@
   },
   "dependencies": {
     "@azure/communication-email": "^1.1.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@neondatabase/serverless": "^1.1.0",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.27.0",
+    "mcp-handler": "^2.0.1",
     "next": "16.2.12",
     "pg": "^8.22.0",
     "react": "19.2.4",

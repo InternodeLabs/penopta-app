@@ -98,6 +98,15 @@ export function skillUrlWithMaskedKey(
   return url.toString();
 }
 
+/**
+ * Remote MCP server URL. This is not a secret — ChatGPT/Claude connect to it as
+ * a custom connector and authenticate via OAuth (sign in with Penopta). No key
+ * is embedded.
+ */
+export function mcpConnectorUrl(appUrl: string = getPublicAppUrl()): string {
+  return `${appUrl.replace(/\/+$/, "")}/api/mcp`;
+}
+
 /** Pasteable sync instructions (skill + bearer token + curl). */
 export function syncRoutineInstructions(
   key: string,
