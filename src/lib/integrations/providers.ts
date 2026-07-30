@@ -42,7 +42,9 @@ export type IntegrationProvider = {
   setupTitle: string;
   /** Intro paragraph under the title */
   intro: string;
-  /** Numbered steps */
+  /** Steps to add Penopta as a live MCP connector */
+  mcpSteps: string[];
+  /** Numbered steps for the optional scheduled sync */
   steps: string[];
   /** Extra notes at the bottom */
   notes?: string[];
@@ -184,7 +186,14 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       icon: Anthropic,
       setupTitle: "Connect Claude",
       intro:
-        "Mint a personal key, then create a Claude routine that runs hourly and paste the instructions into its Instructions field.",
+        "Add Penopta as an MCP connector for live context in chat, or optionally set up an hourly sync routine.",
+      mcpSteps: [
+        "In Claude, open **Settings** and select **Connectors** under Customize.",
+        "Click **Add**, then choose **Add custom connector**.",
+        'Enter a **Name** (e.g. "Penopta").',
+        "Paste the MCP server URL below into **Remote MCP server URL**.",
+        "Click **Add**, then approve the Penopta sign-in prompt when asked.",
+      ],
       steps: [
         "**Mint** your personal key (re-mint or invalidate anytime).",
         "**Copy the Instructions** below — they include the skill, your bearer token, and the sync endpoint.",
@@ -211,7 +220,15 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       icon: OpenAI,
       setupTitle: "Connect ChatGPT",
       intro:
-        "Mint a personal key, then create a ChatGPT scheduled task that runs hourly and paste the instructions into its description.",
+        "Add Penopta as an MCP server for live context in chat, or optionally set up an hourly scheduled sync.",
+      mcpSteps: [
+        "In ChatGPT, open **Settings** and select **Plugins** in the sidebar.",
+        "Open the **MCPs** tab, then click **+ Add server**.",
+        'Enter a **Name** (e.g. "Penopta").',
+        "Choose **Streamable HTTP** as the type.",
+        "Paste the MCP server URL below into the **URL** field.",
+        "Click **Save**, then approve the Penopta sign-in prompt when asked.",
+      ],
       steps: [
         "Mint your personal key (re-mint or invalidate anytime).",
         "Copy the Instructions below — they include the skill, your bearer token, and the sync endpoint.",

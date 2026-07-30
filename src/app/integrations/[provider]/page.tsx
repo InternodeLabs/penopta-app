@@ -95,15 +95,20 @@ export default async function IntegrationSetupPage({
               Live connection (MCP)
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Add Penopta as a custom connector in {provider.name}. It signs in
-              with Penopta (OAuth) and can then pull your project and thread
-              context on demand while you chat. No key to paste.
+              Add Penopta as an MCP server in {provider.name}. It signs in with
+              Penopta (OAuth) and can then pull your project and thread context
+              on demand while you chat. No key to paste.
             </p>
           </div>
+          <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+            {provider.mcpSteps.map((step) => (
+              <li key={step}>{renderStepText(step)}</li>
+            ))}
+          </ol>
           <CopyField
             label="MCP server URL"
             value={mcpUrl}
-            hint={`In ${provider.name}, add a custom connector, paste this URL, then approve the Penopta sign-in prompt.`}
+            hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
           />
         </section>
 
