@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Pencil, Share2, Trash2, X } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -24,15 +24,16 @@ export function ProjectHeader({
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setValue(name);
-  }, [name]);
-
-  useEffect(() => {
     if (editing) {
       inputRef.current?.focus();
       inputRef.current?.select();
     }
   }, [editing]);
+
+  function startEdit() {
+    setValue(name);
+    setEditing(true);
+  }
 
   function cancel() {
     setValue(name);
@@ -113,16 +114,10 @@ export function ProjectHeader({
           </>
         ) : (
           <>
+           
             <button
               type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-foreground transition hover:bg-background"
-            >
-              <Share2 aria-hidden className="h-4 w-4" />
-              Share
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
+              onClick={startEdit}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-foreground px-3 text-sm font-medium text-background transition hover:opacity-90"
             >
               <Pencil aria-hidden className="h-4 w-4" />
