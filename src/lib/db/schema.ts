@@ -406,6 +406,10 @@ export const oauthTokens = pgTable(
       withTimezone: true,
     }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Last time the connector called `verify_penopta` on this connection. */
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    /** Agent/client that ran the last verification, e.g. `claude`, `chatgpt`. */
+    lastVerifiedAgent: text("last_verified_agent"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

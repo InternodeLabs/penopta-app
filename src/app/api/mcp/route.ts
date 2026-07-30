@@ -4,7 +4,10 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import type { ApiKeyOwner } from "@/lib/keys/data";
 import { buildPenoptaMcpServer } from "@/lib/mcp/server";
 import { PROTECTED_RESOURCE_METADATA_PATH } from "@/lib/oauth/config";
-import { verifyAccessToken } from "@/lib/oauth/tokens";
+import { hashToken, verifyAccessToken } from "@/lib/oauth/tokens";
+
+/** Owner plus the token hash, so tools can stamp the connection row. */
+type McpAuthExtra = ApiKeyOwner & { accessTokenHash?: string };
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,10 +20,10 @@ export const dynamic = "force-dynamic";
  * `request.auth.extra` and every tool is scoped to it.
  */
 const baseHandler = (request: Request) => {
-  const owner = request.auth?.extra as ApiKeyOwner | undefined;
+  const extra = request.auth?.extra as McpAuthExtra | undefined;
   const handler = createMcpHandler(
     (server) => {
-      if (owner) buildPenoptaMcpServer(server, owner);
+      if (extra) buildPenoptaMcpServer(server, extra, extra.accessTokenHash);
     },
     { serverInfo: { name: "penopta", version: "1.0.0" } },
   );
@@ -38,7 +41,11 @@ async function verifyToken(
     token: bearerToken,
     clientId: owner.clientId,
     scopes: owner.scope ? owner.scope.split(" ") : ["mcp"],
-    extra: { ownerUserId: owner.ownerUserId, orgId: owner.orgId },
+    extra: {
+      ownerUserId: owner.ownerUserId,
+      orgId: owner.orgId,
+      accessTokenHash: await hashToken(bearerToken),
+    } satisfies McpAuthExtra,
   };
 }
 

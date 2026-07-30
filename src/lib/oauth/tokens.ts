@@ -113,6 +113,21 @@ export async function rotateRefreshToken(
 }
 
 /**
+ * Stamp a token as verified: records when `verify_penopta` was last called on
+ * this connection and which agent ran it. Keyed by the access token hash so no
+ * extra table is needed — the connection row itself carries the proof.
+ */
+export async function markTokenVerified(
+  accessTokenHash: string,
+  agent: string | null,
+): Promise<void> {
+  await db
+    .update(oauthTokens)
+    .set({ lastVerifiedAt: new Date(), lastVerifiedAgent: agent })
+    .where(eq(oauthTokens.accessTokenHash, accessTokenHash));
+}
+
+/**
  * Verify a bearer access token and resolve it to its owner + active org.
  * Returns null for unknown/expired/revoked tokens.
  */

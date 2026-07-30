@@ -11,6 +11,7 @@ import {
   mcpListProjects,
   mcpSearchThreads,
 } from "@/lib/mcp/data";
+import { markTokenVerified } from "@/lib/oauth/tokens";
 
 /** A tool result carrying JSON that the model can parse. */
 function jsonResult(value: unknown) {
@@ -39,7 +40,46 @@ function threadUrl(threadId: string): string {
 export function buildPenoptaMcpServer(
   server: McpServer,
   owner: ApiKeyOwner,
+  accessTokenHash?: string,
 ): void {
+  server.registerTool(
+    "verify_penopta",
+    {
+      title: "Verify Penopta connection",
+      description:
+        "Confirm that the Penopta MCP server is installed and reachable. Needs no " +
+        "other tools first. A successful result means the connection is " +
+        "authenticated and working; it echoes the connected user and org so you " +
+        "can confirm you're pointed at the right account. Pass `agent` with your " +
+        "own name (e.g. \"claude\", \"chatgpt\", \"cursor\") so the verification is " +
+        "attributed to the right client. Call this when the user asks whether the " +
+        "Penopta tool/connector is set up correctly.",
+      inputSchema: z.object({
+        agent: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            'The agent/client running this check, e.g. "claude", "chatgpt", "cursor".',
+          ),
+      }),
+    },
+    async ({ agent }) => {
+      if (accessTokenHash) {
+        await markTokenVerified(accessTokenHash, agent ?? null);
+      }
+      return jsonResult({
+        ok: true,
+        server: "penopta",
+        message: "Penopta MCP connection is installed and authenticated.",
+        agent: agent ?? null,
+        ownerUserId: owner.ownerUserId,
+        orgId: owner.orgId,
+        verifiedAt: new Date().toISOString(),
+      });
+    },
+  );
+
   server.registerTool(
     "list_projects",
     {
