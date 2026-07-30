@@ -18,6 +18,19 @@ export async function listAgentThreads(
     .orderBy(desc(agentThreads.lastSyncedAt));
 }
 
+/**
+ * Distinct agent names (`claude`, `chatgpt`, …) that have synced at least one
+ * thread into the org. Used to mark integrations as connected.
+ */
+export async function listSyncedAgentNames(orgId: string): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ name: agentThreads.lastAgentName })
+    .from(agentThreads)
+    .where(eq(agentThreads.orgId, orgId));
+
+  return rows.map((r) => r.name);
+}
+
 /** Agent threads a user has added to a project, most recently synced first. */
 export async function listProjectThreads(
   projectId: string,

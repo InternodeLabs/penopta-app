@@ -48,6 +48,11 @@ export type IntegrationProvider = {
   notes?: string[];
   /** Optional “having trouble?” helper with an external guided link */
   troubleHelp?: IntegrationTroubleHelp;
+  /**
+   * Build a “try it now” chat URL that prefills the pasteable instructions.
+   * Only used when a key has been minted.
+   */
+  tryNowHref?: (instructions: string) => string;
 };
 
 /**
@@ -148,6 +153,16 @@ export function chatgptInstallHelpHref(): string {
   return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
 }
 
+/** Open Claude with the sync instructions prefilled so the user can try a one-off run. */
+export function claudeTryNowHref(instructions: string): string {
+  return `https://claude.ai/new?q=${encodeURIComponent(instructions)}`;
+}
+
+/** Open ChatGPT with the sync instructions prefilled so the user can try a one-off run. */
+export function chatgptTryNowHref(instructions: string): string {
+  return `https://chatgpt.com/?q=${encodeURIComponent(instructions)}`;
+}
+
 export function listIntegrationProviders(): IntegrationProvider[] {
   return [
     {
@@ -175,6 +190,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         linkLabel: "Ask Claude for guidance",
         href: claudeInstallHelpHref(),
       },
+      tryNowHref: claudeTryNowHref,
     },
     {
       id: "chatgpt",
@@ -202,6 +218,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         linkLabel: "Ask ChatGPT for guidance",
         href: chatgptInstallHelpHref(),
       },
+      tryNowHref: chatgptTryNowHref,
     },
   ];
 }

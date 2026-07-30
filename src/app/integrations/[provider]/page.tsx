@@ -99,9 +99,6 @@ export default async function IntegrationSetupPage({
         </section>
 
         <section className="mt-8 max-w-2xl space-y-4">
-          <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-            Your key
-          </h2>
 
           {activeKey && instructions && instructionsDisplay ? (
             <>
@@ -125,6 +122,21 @@ export default async function IntegrationSetupPage({
                 hint={`Paste into your ${target}. Includes your key — do not share.`}
               />
               <KeyActions mode="manage" />
+              
+              {provider.tryNowHref ? (
+                <div className="mt-8 text-sm text-muted">
+                  Want to try it out before you add it to a schedule,{" "}
+                  <a
+                    href={provider.tryNowHref(instructions)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
+                  >
+                    run it now
+                  </a>
+                </div>
+              ) : null}
+              
             </>
           ) : (
             <>
@@ -147,7 +159,7 @@ export default async function IntegrationSetupPage({
         ) : null}
 
         {provider.troubleHelp ? (
-          <p className="mt-8 max-w-2xl text-sm text-muted">
+          <p className="mt-3 max-w-2xl text-sm text-muted">
             {provider.troubleHelp.text}{" "}
             <a
               href={provider.troubleHelp.href}

@@ -5,12 +5,19 @@ import { IntegrationsShell } from "@/components/IntegrationsShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import { listIntegrationProviders } from "@/lib/integrations/providers";
+import { resolveActiveOrg } from "@/lib/orgs/data";
+import { listSyncedAgentNames } from "@/lib/threads/data";
 
 export default async function IntegrationsPage() {
   const session = await getSession();
   if (!session) redirect(loginStartHref("/integrations"));
 
   const providers = listIntegrationProviders();
+  const { activeOrg } = await resolveActiveOrg(session.user.id);
+  const syncedAgents = await listSyncedAgentNames(activeOrg.id);
+  const connectedIds = new Set(
+    syncedAgents.map((name) => name.trim().toLowerCase()),
+  );
 
   return (
     <IntegrationsShell providers={providers}>
@@ -21,35 +28,43 @@ export default async function IntegrationsPage() {
         <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
           {providers.map((provider) => {
             const Icon = provider.icon;
+            const connected = connectedIds.has(provider.id);
             return (
-            <div
-              key={provider.id}
-              className="flex flex-col rounded-xl border border-border bg-surface p-5"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className={`grid h-9 w-9 place-items-center rounded-full text-white ${provider.iconBg}`}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <div>
-                  <p className="font-semibold text-foreground">
-                    {provider.name}
-                  </p>
-                  <p className="text-sm text-muted">{provider.byline}</p>
-                </div>
-              </div>
-              <p className="mt-4 flex-1 text-sm leading-relaxed text-muted">
-                {provider.description}
-              </p>
-              <Link
-                href={`/integrations/${provider.id}`}
-                className="mt-5 flex h-10 w-full items-center justify-center rounded-lg border border-border text-sm font-medium text-foreground transition hover:bg-background"
+              <div
+                key={provider.id}
+                className="flex flex-col rounded-xl border border-border bg-surface p-5"
               >
-                Connect
-              </Link>
-            </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={`grid h-9 w-9 place-items-center rounded-full text-white ${provider.iconBg}`}
+                  >
+                    <Icon className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground">
+                        {provider.name}
+                      </p>
+                      {connected ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200/80">
+                          Connected
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-muted">{provider.byline}</p>
+                  </div>
+                </div>
+                <p className="mt-4 flex-1 text-sm leading-relaxed text-muted">
+                  {provider.description}
+                </p>
+                <Link
+                  href={`/integrations/${provider.id}`}
+                  className="mt-5 flex h-10 w-full items-center justify-center rounded-lg border border-border text-sm font-medium text-foreground transition hover:bg-background"
+                >
+                  {connected ? "Manage" : "Connect"}
+                </Link>
+              </div>
             );
           })}
         </div>
