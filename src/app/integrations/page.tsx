@@ -19,7 +19,9 @@ export default async function IntegrationsPage() {
         <p className="mt-1 text-sm text-muted">Add a new integration</p>
 
         <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
-          {providers.map((provider) => (
+          {providers.map((provider) => {
+            const Icon = provider.icon;
+            return (
             <div
               key={provider.id}
               className="flex flex-col rounded-xl border border-border bg-surface p-5"
@@ -27,9 +29,9 @@ export default async function IntegrationsPage() {
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden
-                  className={`grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white ${provider.iconBg}`}
+                  className={`grid h-9 w-9 place-items-center rounded-full text-white ${provider.iconBg}`}
                 >
-                  {provider.icon}
+                  <Icon className="size-5" />
                 </span>
                 <div>
                   <p className="font-semibold text-foreground">
@@ -48,7 +50,8 @@ export default async function IntegrationsPage() {
                 Connect
               </Link>
             </div>
-          ))}
+            );
+          })}
         </div>
       </main>
     </IntegrationsShell>

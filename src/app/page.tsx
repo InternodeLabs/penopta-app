@@ -1,6 +1,8 @@
 import { SignInCard } from "@/components/SignInCard";
 import { WorkspaceEmpty } from "@/components/WorkspaceEmpty";
 import { getSession } from "@/lib/auth/server";
+import { listAgentThreads } from "@/lib/threads/data";
+import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_state: "Your sign-in session expired. Please try again.",
@@ -32,5 +34,14 @@ export default async function HomePage({
     );
   }
 
-  return <WorkspaceEmpty user={session.user} />;
+  const threads = await listAgentThreads(session.user.id);
+  const ownerNames = await resolveThreadOwnerNames(threads, session);
+
+  return (
+    <WorkspaceEmpty
+      user={session.user}
+      threads={threads}
+      ownerNames={ownerNames}
+    />
+  );
 }

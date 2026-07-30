@@ -16,6 +16,19 @@ import {
 } from "@/lib/integrations/providers";
 import { getActiveApiKey } from "@/lib/keys/data";
 
+/** Render step copy with simple `**bold**` emphasis. */
+function renderStepText(step: string) {
+  return step.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i} className="font-semibold">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
 export default async function IntegrationSetupPage({
   params,
 }: {
@@ -31,6 +44,7 @@ export default async function IntegrationSetupPage({
   const provider = getIntegrationProvider(providerId);
   if (!provider) notFound();
 
+  const ProviderIcon = provider.icon;
   const activeKey = await getActiveApiKey(session.user.id);
   const appUrl = getPublicAppUrl();
   const target =
@@ -55,9 +69,9 @@ export default async function IntegrationSetupPage({
         <div className="mt-6 flex items-center gap-3">
           <span
             aria-hidden
-            className={`grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-white ${provider.iconBg}`}
+            className={`grid h-10 w-10 place-items-center rounded-full text-white ${provider.iconBg}`}
           >
-            {provider.icon}
+            <ProviderIcon className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -77,7 +91,7 @@ export default async function IntegrationSetupPage({
           </h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
             {provider.steps.map((step) => (
-              <li key={step}>{step}</li>
+              <li key={step}>{renderStepText(step)}</li>
             ))}
           </ol>
         </section>

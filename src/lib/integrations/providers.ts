@@ -5,6 +5,11 @@
  * pastes them into a Routine; ChatGPT pastes them into a scheduled task.
  */
 
+import type { ComponentType } from "react";
+
+import Anthropic from "@/components/icons/Anthropic";
+import OpenAI from "@/components/icons/OpenAI";
+
 export type IntegrationProviderId = "claude" | "chatgpt";
 
 export type CopyField = {
@@ -31,7 +36,8 @@ export type IntegrationProvider = {
   byline: string;
   description: string;
   iconBg: string;
-  icon: string;
+  /** Brand glyph rendered inside the colored circle. */
+  icon: ComponentType<{ className?: string }>;
   /** Page title on the setup screen */
   setupTitle: string;
   /** Intro paragraph under the title */
@@ -151,17 +157,17 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       description:
         "Connect Claude to power your agents with advanced reasoning and natural conversation.",
       iconBg: "bg-[#d97757]",
-      icon: "C",
+      icon: Anthropic,
       setupTitle: "Connect Claude",
       intro:
         "Mint a personal key, then create a Claude routine that runs hourly and paste the instructions into its Instructions field.",
       steps: [
-        "Mint your personal key (re-mint or invalidate anytime).",
-        "Copy the Instructions below — they include the skill, your bearer token, and the sync endpoint.",
-        "In Claude, go to Routines and create a new routine.",
-        'Name it "Penopta Local Sync" for a local routine, or "Penopta Cloud Sync" for a cloud one.',
-        "Paste the Instructions into the routine’s Instructions field.",
-        "Set the schedule to Hourly, then create the routine.",
+        "**Mint** your personal key (re-mint or invalidate anytime).",
+        "**Copy the Instructions** below — they include the skill, your bearer token, and the sync endpoint.",
+        "In Claude, go to **Routines** and create a new routine.",
+        'Name it **"Penopta Local Sync"** for a local routine, or **"Penopta Cloud Sync"** for a cloud one.',
+        "Paste the Instructions into the routine’s **Instructions** field.",
+        "Set the schedule to **Hourly**, then create the routine.",
       ],
       notes: [],
       troubleHelp: {
@@ -177,7 +183,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       description:
         "Connect ChatGPT to leverage GPT-4 capabilities for intelligent agent interactions.",
       iconBg: "bg-[#10a37f]",
-      icon: "G",
+      icon: OpenAI,
       setupTitle: "Connect ChatGPT",
       intro:
         "Mint a personal key, then create a ChatGPT scheduled task that runs hourly and paste the instructions into its description.",
