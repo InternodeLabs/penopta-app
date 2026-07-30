@@ -13,7 +13,7 @@ import { loginStartHref } from "@/lib/auth/urls";
 import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { getVisibleProject } from "@/lib/projects/data";
-import { listOrgThreads, listProjectThreads } from "@/lib/threads/data";
+import { listAgentThreads, listProjectThreads } from "@/lib/threads/data";
 
 function initials(user: SessionUser): string {
   const base = user.name || user.email || "?";
@@ -45,7 +45,7 @@ export default async function ProjectDetailPage({
 
   const [threads, orgThreads] = await Promise.all([
     listProjectThreads(project.id),
-    listOrgThreads(activeOrg.id),
+    listAgentThreads(activeOrg.id),
   ]);
 
   const memberNames = await lookupPortalUsers(

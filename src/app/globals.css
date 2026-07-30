@@ -9,6 +9,8 @@
   --skeleton: #e9e9ec;
   --accent: #18181b;
   --accent-foreground: #ffffff;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
 }
 
 @theme inline {
@@ -20,6 +22,8 @@
   --color-skeleton: var(--skeleton);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

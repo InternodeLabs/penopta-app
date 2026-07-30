@@ -101,6 +101,41 @@ export async function renameProjectAction(
   }
 }
 
+export type DeleteProjectState =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/** Delete a project the current user owns (thread links cascade away). */
+export async function deleteProjectAction(
+  id: string,
+): Promise<DeleteProjectState> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sign in to delete a project." };
+
+  try {
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+
+    const [row] = await db
+      .delete(projects)
+      .where(
+        and(
+          eq(projects.id, id),
+          eq(projects.orgId, activeOrg.id),
+          eq(projects.ownerUserId, session.user.id),
+        ),
+      )
+      .returning({ id: projects.id });
+
+    if (!row) return { ok: false, error: "Project not found." };
+
+    revalidatePath("/");
+    return { ok: true };
+  } catch (err) {
+    console.error("deleteProjectAction", err);
+    return { ok: false, error: "Couldn't delete the project. Try again." };
+  }
+}
+
 export type SetProjectThreadsState =
   | { ok: true; count: number }
   | { ok: false; error: string };

@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, Pencil, Share2, X } from "lucide-react";
+import { Check, Pencil, Share2, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { renameProjectAction } from "@/lib/projects/actions";
+import { deleteProjectAction, renameProjectAction } from "@/lib/projects/actions";
 
 /** Project detail header with inline name editing for the owner. */
 export function ProjectHeader({
@@ -18,7 +18,9 @@ export function ProjectHeader({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [deleting, startDelete] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -51,6 +53,18 @@ export function ProjectHeader({
       }
       setEditing(false);
       router.refresh();
+    });
+  }
+
+  function remove() {
+    startDelete(async () => {
+      const result = await deleteProjectAction(projectId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Project deleted");
+      router.push("/");
     });
   }
 
@@ -114,9 +128,60 @@ export function ProjectHeader({
               <Pencil aria-hidden className="h-4 w-4" />
               Edit
             </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              title="Delete project"
+              aria-label="Delete project"
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-2.5 text-sm font-medium text-danger transition hover:bg-danger/10"
+            >
+              <Trash2 aria-hidden className="h-4 w-4" />
+            </button>
           </>
         )}
       </div>
+
+      {confirmingDelete ? (
+        <div
+          className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete project"
+          onClick={() => !deleting && setConfirmingDelete(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-xl"
+          >
+            <h2 className="text-lg font-semibold tracking-tight">
+              Delete project
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Delete <span className="font-medium text-foreground">{name}</span>?
+              This removes the project and its thread links. Your agent threads
+              themselves are not deleted. This can’t be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-4 text-sm font-medium text-foreground transition hover:bg-background disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={remove}
+                disabled={deleting}
+                className="inline-flex h-10 items-center justify-center rounded-lg bg-danger px-4 text-sm font-semibold text-danger-foreground transition hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete project"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }
