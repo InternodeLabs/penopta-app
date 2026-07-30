@@ -28,7 +28,7 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 - `project` is the starter owned entity (`public` | `private` visibility).
 - All project reads require a session. Owners see their rows; `visibility` still matters for sharing later.
 - `user_api_key`: each user may have one active opaque key (30-day TTL). They can re-mint (rotate) or invalidate anytime. Appended to the skill URL as `key=…` so external agents can match posts to the portal user. Expired/invalidated keys fail lookup.
-- Agent ingest: `POST /api/v1/agent-sync` with `Authorization: Bearer <key>`. Body `penopta_user_id` must equal the key owner. Persists `agent_sync_run` + upserts `agent_thread` (+ snapshots).
+- Agent ingest: `POST /api/v1/agent-sync` with `Authorization: Bearer <key>`. Identity comes from the key; `penopta_user_id` in the body is optional and only checked for mismatch when present. Persists `agent_sync_run` + upserts `agent_thread` (+ snapshots).
 
 ### Environments
 

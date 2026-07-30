@@ -35,7 +35,9 @@ export const threadPayloadSchema = z.object({
 export const agentSyncPayloadSchema = z.object({
   schemaVersion: z.string().min(1),
   agentId: z.string().min(1),
-  penopta_user_id: z.string().min(1),
+  // Optional. Identity is resolved from the Bearer key; when present this must
+  // match the key owner. Agents that only hold the key can omit it.
+  penopta_user_id: z.string().min(1).optional(),
   runId: z.string().min(1),
   windowStart: isoDateTime,
   windowEnd: isoDateTime,

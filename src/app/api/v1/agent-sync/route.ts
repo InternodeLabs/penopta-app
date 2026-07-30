@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = parsed.data;
-  if (payload.penopta_user_id !== ownerUserId) {
+  if (payload.penopta_user_id && payload.penopta_user_id !== ownerUserId) {
     return NextResponse.json(
       { error: "API key does not match penopta_user_id." },
       { status: 403 },

@@ -32,7 +32,6 @@ For each eligible chat/task:
    * title
    * type/kind
    * status
-   * penopta's user info
    * created and updated timestamps
    * project or working-directory context when available
 2. Read the user-visible transcript changes in the time window:
@@ -59,13 +58,12 @@ For each eligible chat/task:
 
 ## Required payload
 
-Create one JSON payload with this shape:
+Create one JSON payload with this shape. Do not include a user id — your identity is resolved from the Bearer token you were given, so there is no `penopta_user_id` field to fill in.
 
 ```json
 {
   "schemaVersion": "1.0",
   "agentId": "hourly-thread-context-sync",
-  "penopta_id": "{{penopta_id}}",
   "runId": "<unique-id>",
   "windowStart": "<ISO-8601>",
   "windowEnd": "<ISO-8601>",
