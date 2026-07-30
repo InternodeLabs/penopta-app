@@ -10,6 +10,7 @@ import {
   NoActiveKeyError,
   remintApiKey,
 } from "@/lib/keys/data";
+import { resolveActiveOrg } from "@/lib/orgs/data";
 
 export type KeyActionState =
   | { ok: true; key?: string; expiresAt?: string }
@@ -24,7 +25,8 @@ export async function mintUserApiKeyAction(): Promise<KeyActionState> {
   if (!session) return { ok: false, error: "Sign in to mint a key." };
 
   try {
-    const row = await mintApiKey(session.user.id);
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+    const row = await mintApiKey(session.user.id, activeOrg.id);
     revalidateKeys();
     return {
       ok: true,
@@ -35,7 +37,7 @@ export async function mintUserApiKeyAction(): Promise<KeyActionState> {
     if (err instanceof ActiveKeyExistsError) {
       return {
         ok: false,
-        error: `You already have an active key. Re-mint or invalidate it first.`,
+        error: `You already have an active key for this org. Re-mint or invalidate it first.`,
       };
     }
     console.error("mintUserApiKeyAction", err);
@@ -48,7 +50,8 @@ export async function remintUserApiKeyAction(): Promise<KeyActionState> {
   if (!session) return { ok: false, error: "Sign in to re-mint a key." };
 
   try {
-    const row = await remintApiKey(session.user.id);
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+    const row = await remintApiKey(session.user.id, activeOrg.id);
     revalidateKeys();
     return {
       ok: true,
@@ -66,7 +69,8 @@ export async function invalidateUserApiKeyAction(): Promise<KeyActionState> {
   if (!session) return { ok: false, error: "Sign in to invalidate a key." };
 
   try {
-    const count = await invalidateActiveApiKeys(session.user.id);
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+    const count = await invalidateActiveApiKeys(session.user.id, activeOrg.id);
     if (count === 0) throw new NoActiveKeyError();
     revalidateKeys();
     return { ok: true };

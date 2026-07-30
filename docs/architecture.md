@@ -8,13 +8,42 @@ pattern, same local Docker / prod Neon split, same Drizzle driver selection.
 
 ## Schema
 
+Organizations are the ownership layer. Penopta owns them locally (it is not an
+identity provider), so membership still references portal user ids. Every user
+gets an auto-created **personal** org, and acts in exactly one **active** org at
+a time. All owned rows carry `org_id`; `owner_user_id` stays for attribution.
+
 ```
+organization
+────────────
+id (uuid)
+slug (unique)
+name
+created_by_user_id (portal id)
+is_personal (bool)   # auto-created single-member org
+created_at / updated_at
+
+organization_membership
+───────────────────────
+id (uuid)
+org_id → organization.id (cascade)
+user_id (portal id)
+role: owner | member
+unique (org_id, user_id)
+
+user_active_org
+───────────────
+user_id (portal id, PK)   # one active org at a time
+org_id → organization.id (cascade)
+updated_at
+
 project
 ───────
 id (uuid, URL id)
 slug (unique)
 name
 summary
+org_id (→ organization.id)
 owner_user_id (portal id)
 visibility: public | private
 created_at
@@ -23,6 +52,7 @@ updated_at
 user_api_key
 ───────────
 id (uuid)
+org_id (→ organization.id)   # key syncs into this org
 owner_user_id (portal id)
 key (unique opaque secret)
 expires_at
@@ -31,6 +61,7 @@ created_at
 agent_sync_run
 ──────────────
 id (uuid)
+org_id (→ organization.id)
 owner_user_id (portal id)
 schema_version, agent_id, run_id
 window_start / window_end
@@ -42,6 +73,7 @@ unique (owner_user_id, run_id)
 agent_thread
 ────────────
 id (uuid)
+org_id (→ organization.id)
 owner_user_id + thread_id (unique, stable agent id)
 title, kind, status, project_context
 source_activity / working_state (jsonb)
@@ -55,10 +87,11 @@ per-run copy of a thread (history), FK → agent_sync_run
 Defined in `src/lib/db/schema.ts`. Queried via `src/lib/projects/data.ts` and
 `src/lib/keys/data.ts`. Ingest via `src/lib/ingest/`.
 
-One active (non-expired) key per user. Users can **re-mint** (invalidate + new
+One active (non-expired) key per user **per org** — the key is minted for the
+active org and syncs agent data into it. Users can **re-mint** (invalidate + new
 key) or **invalidate** anytime. Mint appends `key=…` to the Skillbase skill URL
-on the integrations setup pages. External apps can resolve the portal user with
-`resolveUserIdByApiKey` (expired/invalidated keys do not match).
+on the integrations setup pages. External apps resolve the owner + org with
+`resolveOwnerByApiKey` (expired/invalidated keys do not match).
 
 ### Agent sync ingest
 
@@ -71,7 +104,9 @@ per-run history for facets like agent/model over time.
 ### Reads
 
 - All project routes require a session. Logged-out users are sent to sign-in.
-- Visible if `visibility = 'public'` **or** `owner_user_id = viewer` (sharing later).
+- Reads are scoped to the viewer's **active org**. Within that org a project is
+  visible if `visibility = 'public'` **or** `owner_user_id = viewer`.
+- Agent threads are org-scoped: every member of the active org sees them.
 - URL param `/projects/[id]` accepts the project UUID (or slug).
 
 ## Hosting split

@@ -3,13 +3,15 @@ import Link from "next/link";
 import { listVisibleProjects } from "@/lib/projects/data";
 
 export async function ProjectList({
+  orgId,
   viewerUserId,
   query,
 }: {
-  viewerUserId?: string;
+  orgId: string;
+  viewerUserId: string;
   query?: string;
 }) {
-  const rows = await listVisibleProjects({ viewerUserId, query });
+  const rows = await listVisibleProjects({ orgId, viewerUserId, query });
 
   if (rows.length === 0) {
     return (

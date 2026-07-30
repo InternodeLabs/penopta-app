@@ -22,6 +22,20 @@
       "when": 1785377543430,
       "tag": "0002_perfect_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785382474046,
+      "tag": "0003_magical_iceman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785382929158,
+      "tag": "0004_wild_starjammers",
+      "breakpoints": true
     }
   ]
 }

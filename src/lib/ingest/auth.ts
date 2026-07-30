@@ -1,4 +1,4 @@
-import { resolveUserIdByApiKey } from "@/lib/keys/data";
+import { resolveOwnerByApiKey, type ApiKeyOwner } from "@/lib/keys/data";
 
 /** Extract the Bearer token from an Authorization header value. */
 export function parseBearerToken(
@@ -11,13 +11,13 @@ export function parseBearerToken(
 }
 
 /**
- * Resolve the portal user from `Authorization: Bearer <api-key>`.
+ * Resolve the owner + org from `Authorization: Bearer <api-key>`.
  * Returns null when missing/invalid/expired.
  */
 export async function resolveOwnerFromBearer(
   authorization: string | null,
-): Promise<string | null> {
+): Promise<ApiKeyOwner | null> {
   const token = parseBearerToken(authorization);
   if (!token) return null;
-  return resolveUserIdByApiKey(token);
+  return resolveOwnerByApiKey(token);
 }

@@ -28,6 +28,7 @@ function parseOptionalDate(value: string | null): Date | null {
  */
 export async function ingestAgentSync(
   ownerUserId: string,
+  orgId: string,
   payload: AgentSyncPayload,
 ): Promise<{ run: AgentSyncRunRow; threadsUpserted: number }> {
   const existing = await db
@@ -48,6 +49,7 @@ export async function ingestAgentSync(
   const inserted = await db
     .insert(agentSyncRuns)
     .values({
+      orgId,
       ownerUserId,
       schemaVersion: payload.schemaVersion,
       agentId: payload.agentId,
@@ -67,6 +69,7 @@ export async function ingestAgentSync(
 
   for (const thread of payload.threads) {
     const threadValues = {
+      orgId,
       ownerUserId,
       threadId: thread.threadId,
       title: thread.title,
@@ -92,6 +95,7 @@ export async function ingestAgentSync(
       .onConflictDoUpdate({
         target: [agentThreads.ownerUserId, agentThreads.threadId],
         set: {
+          orgId: threadValues.orgId,
           title: threadValues.title,
           kind: threadValues.kind,
           status: threadValues.status,
@@ -112,6 +116,7 @@ export async function ingestAgentSync(
 
     await db.insert(agentThreadSnapshots).values({
       syncRunId: run.id,
+      orgId,
       ownerUserId,
       threadId: thread.threadId,
       title: thread.title,

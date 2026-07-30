@@ -1,33 +1,39 @@
+import Image from "next/image";
 import Link from "next/link";
 
-/** Text wordmark until brand assets land. */
+/** Full Penopta wordmark (icon + black brand name) — header branding. */
 export function BrandLogo({
   className,
 }: {
   className?: string;
 }) {
   return (
-    <span
-      className={`font-semibold tracking-tight text-foreground ${className ?? ""}`}
-    >
-      Penopta
-    </span>
+    <Image
+      src="/brand/logo-full.png"
+      alt="Penopta"
+      width={1024}
+      height={260}
+      priority
+      className={`h-6 w-auto ${className ?? ""}`}
+    />
   );
 }
 
-/** Compact mark for interstitial / icon contexts. */
+/** Standalone icon mark for interstitial / compact contexts. */
 export function BrandIcon({
   className,
 }: {
   className?: string;
 }) {
   return (
-    <span
+    <Image
+      src="/brand/icon.png"
+      alt=""
       aria-hidden
-      className={`grid h-11 w-11 place-items-center rounded-xl bg-accent text-sm font-bold text-accent-foreground ${className ?? ""}`}
-    >
-      P
-    </span>
+      width={380}
+      height={380}
+      className={`h-11 w-11 ${className ?? ""}`}
+    />
   );
 }
 

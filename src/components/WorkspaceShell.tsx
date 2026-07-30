@@ -2,27 +2,38 @@ import Link from "next/link";
 
 import { AddProjectButton } from "@/components/AddProjectButton";
 import { BrandLogo } from "@/components/Brand";
+import { OrgSwitcher, type OrgSwitcherItem } from "@/components/OrgSwitcher";
 import type { SessionUser } from "@/lib/auth/session";
-import type { AgentThreadRow } from "@/lib/db/schema";
+import type { AgentThreadRow, ProjectRow } from "@/lib/db/schema";
 
 type SidebarThread = Pick<
   AgentThreadRow,
   "id" | "title" | "status" | "lastAgentName" | "ownerUserId"
 >;
 
-/** Shared workspace chrome: left sidebar (threads) + header + main content. */
+type SidebarProject = Pick<ProjectRow, "id" | "name">;
+
+/** Shared workspace chrome: left sidebar (projects + threads) + header + main content. */
 export function WorkspaceShell({
   user,
+  orgs = [],
+  activeOrgId,
   threads,
+  projects = [],
   ownerNames = {},
   activeThreadId,
+  activeProjectId,
   children,
 }: {
   user: SessionUser;
+  orgs?: OrgSwitcherItem[];
+  activeOrgId?: string;
   threads: SidebarThread[];
+  projects?: SidebarProject[];
   /** Map of ownerUserId → display name; falls back to the id when missing. */
   ownerNames?: Record<string, string>;
   activeThreadId?: string;
+  activeProjectId?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -30,17 +41,52 @@ export function WorkspaceShell({
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
         <div className="border-b border-border px-4 py-4">
           <Link href="/">
-            <BrandLogo className="text-base" />
+            <BrandLogo className="h-7" />
           </Link>
         </div>
+
+        {activeOrgId ? (
+          <div className="px-3 pt-3">
+            <OrgSwitcher activeOrgId={activeOrgId} orgs={orgs} />
+          </div>
+        ) : null}
 
         <div className="px-3 pt-3">
           <AddProjectButton enabled={threads.length > 0} />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
+          {projects.length > 0 ? (
+            <div className="mb-5">
+              <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
+                Projects
+              </p>
+              <ul className="-mx-1 mt-2 space-y-0.5">
+                {projects.map((project) => {
+                  const active = project.id === activeProjectId;
+                  return (
+                    <li key={project.id}>
+                      <Link
+                        href={`/projects/${project.id}`}
+                        aria-current={active ? "page" : undefined}
+                        className={`block truncate rounded-md px-2 py-1.5 text-sm transition ${
+                          active
+                            ? "bg-black/10 font-medium text-foreground"
+                            : "text-foreground hover:bg-black/5"
+                        }`}
+                        title={project.name}
+                      >
+                        {project.name}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
           <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Threads
+            Agent Threads
           </p>
           {threads.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No threads yet</p>

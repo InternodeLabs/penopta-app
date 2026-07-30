@@ -17,7 +17,7 @@ export function IntegrationsShell({
     <div className="flex min-h-dvh bg-background">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
         <div className="border-b border-border px-4 py-4">
-          <BrandLogo className="text-base" />
+          <BrandLogo className="h-7" />
         </div>
 
         <div className="px-3 pt-3">

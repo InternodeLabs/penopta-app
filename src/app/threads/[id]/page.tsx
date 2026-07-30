@@ -5,6 +5,9 @@ import { ThreadConversation } from "@/components/ThreadConversation";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
+import { resolveActiveOrg } from "@/lib/orgs/data";
+import { toOrgSwitcherItems } from "@/lib/orgs/view";
+import { listVisibleProjects } from "@/lib/projects/data";
 import { getAgentThread, listAgentThreads } from "@/lib/threads/data";
 import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
@@ -17,9 +20,12 @@ export default async function ThreadPage({
   const session = await getSession();
   if (!session) redirect(loginStartHref(`/threads/${id}`));
 
-  const [threads, thread] = await Promise.all([
-    listAgentThreads(session.user.id),
-    getAgentThread(session.user.id, id),
+  const { activeOrg, memberships } = await resolveActiveOrg(session.user.id);
+
+  const [threads, thread, projects] = await Promise.all([
+    listAgentThreads(activeOrg.id),
+    getAgentThread(activeOrg.id, id),
+    listVisibleProjects({ orgId: activeOrg.id, viewerUserId: session.user.id }),
   ]);
   if (!thread) notFound();
 
@@ -29,7 +35,10 @@ export default async function ThreadPage({
   return (
     <WorkspaceShell
       user={session.user}
+      orgs={toOrgSwitcherItems(memberships)}
+      activeOrgId={activeOrg.id}
       threads={threads}
+      projects={projects}
       ownerNames={ownerNames}
       activeThreadId={thread.id}
     >

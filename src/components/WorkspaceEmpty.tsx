@@ -1,25 +1,39 @@
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 
+import type { OrgSwitcherItem } from "@/components/OrgSwitcher";
 import { StartProjectModal } from "@/components/StartProjectModal";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import type { SessionUser } from "@/lib/auth/session";
-import type { AgentThreadRow } from "@/lib/db/schema";
+import type { AgentThreadRow, ProjectRow } from "@/lib/db/schema";
 
 /** Logged-in workspace landing — prompt to connect an agent, then start a project. */
 export function WorkspaceEmpty({
   user,
+  orgs = [],
+  activeOrgId,
   threads = [],
+  projects = [],
   ownerNames = {},
 }: {
   user: SessionUser;
+  orgs?: OrgSwitcherItem[];
+  activeOrgId?: string;
   threads?: AgentThreadRow[];
+  projects?: ProjectRow[];
   ownerNames?: Record<string, string>;
 }) {
   const hasThreads = threads.length > 0;
 
   return (
-    <WorkspaceShell user={user} threads={threads} ownerNames={ownerNames}>
+    <WorkspaceShell
+      user={user}
+      orgs={orgs}
+      activeOrgId={activeOrgId}
+      threads={threads}
+      projects={projects}
+      ownerNames={ownerNames}
+    >
       <main className="flex flex-1 items-center justify-center p-6">
         {hasThreads ? (
           <StartProjectModal />

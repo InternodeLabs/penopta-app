@@ -15,6 +15,7 @@ import {
   syncRoutineInstructionsMasked,
 } from "@/lib/integrations/providers";
 import { getActiveApiKey } from "@/lib/keys/data";
+import { resolveActiveOrg } from "@/lib/orgs/data";
 
 /** Render step copy with simple `**bold**` emphasis. */
 function renderStepText(step: string) {
@@ -45,7 +46,8 @@ export default async function IntegrationSetupPage({
   if (!provider) notFound();
 
   const ProviderIcon = provider.icon;
-  const activeKey = await getActiveApiKey(session.user.id);
+  const { activeOrg } = await resolveActiveOrg(session.user.id);
+  const activeKey = await getActiveApiKey(session.user.id, activeOrg.id);
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";

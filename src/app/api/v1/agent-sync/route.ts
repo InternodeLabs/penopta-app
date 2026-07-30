@@ -11,16 +11,16 @@ import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
  * and `penopta_user_id` in the body must match that key's owner.
  */
 export async function POST(request: NextRequest) {
-  console.log("POST /api/v1/agent-sync", request.body, request.headers.get("authorization"));
-  const ownerUserId = await resolveOwnerFromBearer(
+  const owner = await resolveOwnerFromBearer(
     request.headers.get("authorization"),
   );
-  if (!ownerUserId) {
+  if (!owner) {
     return NextResponse.json(
       { error: "Invalid or missing API key." },
       { status: 401 },
     );
   }
+  const { ownerUserId, orgId } = owner;
 
   let json: unknown;
   try {
@@ -49,7 +49,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { run, threadsUpserted } = await ingestAgentSync(ownerUserId, payload);
+    const { run, threadsUpserted } = await ingestAgentSync(
+      ownerUserId,
+      orgId,
+      payload,
+    );
     const checkpoint = run.windowEnd.toISOString();
     return NextResponse.json(
       {
