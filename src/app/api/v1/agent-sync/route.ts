@@ -50,23 +50,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const { run, threadsUpserted } = await ingestAgentSync(ownerUserId, payload);
+    const checkpoint = run.windowEnd.toISOString();
     return NextResponse.json(
       {
         ok: true,
         runId: run.runId,
         syncRunId: run.id,
         threadsUpserted,
+        checkpoint,
+        cursor: checkpoint,
       },
       { status: 201 },
     );
   } catch (err) {
     if (err instanceof DuplicateRunError) {
+      const checkpoint = err.existing.windowEnd.toISOString();
       return NextResponse.json(
         {
           ok: true,
           runId: err.existing.runId,
           syncRunId: err.existing.id,
           duplicate: true,
+          checkpoint,
+          cursor: checkpoint,
         },
         { status: 200 },
       );

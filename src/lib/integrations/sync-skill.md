@@ -128,7 +128,7 @@ Use this delivery priority:
    Content-Type: application/json
    Idempotency-Key: <runId>
    ```
-   The endpoint must return a successful receipt containing a new checkpoint or accepted cursor. Treat any non-successful response as a failed run. Do not log secrets, tokens, or full authorization headers.
+   A successful response (HTTP 200/201) returns `{ "ok": true, "runId": "...", "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>" }`. Save `checkpoint` (equal to your `windowEnd`) as the new checkpoint for the next run. Treat any non-successful response as a failed run. Do not log secrets, tokens, or full authorization headers.
 2. **Fallback: writable Internode MCP tool**
 
    If the API endpoint is unavailable but a writable Internode MCP tool is available, use a tool equivalent to:
