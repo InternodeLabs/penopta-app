@@ -1,11 +1,10 @@
 import { formatDistanceToNow } from "date-fns";
-import { CheckCircle2, Lock } from "lucide-react";
+import { CheckCircle2, ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { CopyField } from "@/components/CopyField";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
-import { KeyActions } from "@/components/KeyActions";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
@@ -14,12 +13,9 @@ import {
   listIntegrationProviders,
   mcpConnectorUrl,
   syncRoutineInstructions,
-  syncRoutineInstructionsMasked,
   VERIFY_CHAT_COMMAND,
 } from "@/lib/integrations/providers";
 import { readSyncSkill } from "@/lib/integrations/skill";
-import { getActiveApiKey } from "@/lib/keys/data";
-import { resolveActiveOrg } from "@/lib/orgs/data";
 import { getLatestMcpVerification } from "@/lib/oauth/tokens";
 
 /** Render step copy with simple `**bold**` emphasis. */
@@ -51,23 +47,40 @@ export default async function IntegrationSetupPage({
   if (!provider) notFound();
 
   const ProviderIcon = provider.icon;
-  const { activeOrg } = await resolveActiveOrg(session.user.id);
-  const activeKey = await getActiveApiKey(session.user.id, activeOrg.id);
   const mcpVerification = await getLatestMcpVerification(session.user.id);
   const mcpVerified = Boolean(mcpVerification);
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
-  const skillBody = activeKey ? await readSyncSkill() : null;
-  const instructions =
-    activeKey && skillBody
-      ? syncRoutineInstructions(activeKey.key, skillBody, appUrl)
-      : null;
-  const instructionsDisplay =
-    activeKey && skillBody
-      ? syncRoutineInstructionsMasked(activeKey.key, skillBody, appUrl)
-      : null;
+  const skillBody = await readSyncSkill();
+  const instructions = syncRoutineInstructions(skillBody);
   const mcpUrl = mcpConnectorUrl(appUrl);
+
+  /** Shown expanded before verification, and behind a disclosure after. */
+  const mcpSetupInstructions = (
+    <>
+      <div>
+        <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
+          Chat with Penopta in {provider.name} (MCP)
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Add Penopta as an MCP server in {provider.name}. It signs in with
+          Penopta (OAuth) and can then pull your project and thread context on
+          demand while you chat. No key to paste.
+        </p>
+      </div>
+      <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+        {provider.mcpSteps.map((step) => (
+          <li key={step}>{renderStepText(step)}</li>
+        ))}
+      </ol>
+      <CopyField
+        label="MCP server URL"
+        value={mcpUrl}
+        hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
+      />
+    </>
+  );
 
   return (
     <IntegrationsShell providers={providers} activeProviderId={provider.id}>
@@ -98,55 +111,46 @@ export default async function IntegrationSetupPage({
           {provider.intro}
         </p>
 
-        <section className="mt-8 max-w-2xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-              Chat with Penopta in {provider.name} (MCP)
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Add Penopta as an MCP server in {provider.name}. It signs in with
-              Penopta (OAuth) and can then pull your project and thread context
-              on demand while you chat. No key to paste.
-            </p>
-          </div>
-          <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
-            {provider.mcpSteps.map((step) => (
-              <li key={step}>{renderStepText(step)}</li>
-            ))}
-          </ol>
-          <CopyField
-            label="MCP server URL"
-            value={mcpUrl}
-            hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
-          />
-          
-          {mcpVerified && mcpVerification ? (
-            <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              <CheckCircle2 className="size-4 shrink-0" aria-hidden />
-              <span>
-                Connection verified
-                {mcpVerification.agent ? ` via ${mcpVerification.agent}` : ""}{" "}
-                {formatDistanceToNow(mcpVerification.verifiedAt, {
-                  addSuffix: true,
-                })}
-                .
-              </span>
-            </p>
-          ) : (
-            null
-          )}
-        </section>
+        {mcpVerified && mcpVerification ? (
+          <section className="mt-8 max-w-2xl">
+            <details className="group rounded-md bg-emerald-50 px-3 py-2 text-emerald-700">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm [&::-webkit-details-marker]:hidden">
+                <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                <span>
+                  MCP connection verified
+                  {mcpVerification.agent ? ` via ${mcpVerification.agent}` : ""}{" "}
+                  {formatDistanceToNow(mcpVerification.verifiedAt, {
+                    addSuffix: true,
+                  })}
+                  .
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="ml-auto size-4 shrink-0 transition group-open:rotate-180"
+                />
+                <span className="sr-only">Show setup instructions</span>
+              </summary>
+              <div className="mt-3 space-y-4 border-t border-emerald-200/70 pt-3 text-foreground">
+                {mcpSetupInstructions}
+              </div>
+            </details>
+          </section>
+        ) : (
+          <section className="mt-8 max-w-2xl space-y-4">
+            {mcpSetupInstructions}
+          </section>
+        )}
 
         {!mcpVerified ? (
           <section className="mt-8 max-w-2xl rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 px-5 py-6">
             <div className="flex items-center gap-2">
               <Lock className="size-4 text-muted" aria-hidden />
               <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-                Next: Sync your conversations to Penopta
+                Verify the MCP connection
               </h2>
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              Verify the MCP connection. Once verified in {provider.name}, we can
+              To sync context for your agents, you need to verify the MCP connection in {provider.name}. Once verified, we can
               reach Penopta, the scheduled-sync setup appears here.
             </p>
             <div className="mt-4">
@@ -196,53 +200,26 @@ export default async function IntegrationSetupPage({
         </section>
 
         <section className="mt-8 max-w-2xl space-y-4">
-
-          {activeKey && instructions && instructionsDisplay ? (
-            <>
-              <p className="text-sm text-muted">
-                Active until{" "}
-                <span className="font-medium text-foreground">
-                  {activeKey.expiresAt.toLocaleString()}
-                </span>{" "}
-                (
-                {formatDistanceToNow(activeKey.expiresAt, {
-                  addSuffix: true,
-                })}
-                ). Re-mint to rotate, or invalidate to revoke immediately.
-              </p>
-              <CopyField
-                label="Instructions"
-                value={instructions}
-                displayValue={instructionsDisplay}
-                multiline
-                rows={1}
-                hint={`Paste into your ${target}. Includes your key — do not share.`}
-              />
-              <KeyActions mode="manage" />
-              
-              {provider.tryNowHref ? (
-                <div className="mt-8 text-sm text-muted">
-                  Want to try it out before you add it to a schedule,{" "}
-                  <a
-                    href={provider.tryNowHref(instructions)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
-                  >
-                    run it now
-                  </a>
-                </div>
-              ) : null}
-              
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted">
-                {`Mint a key to unlock pasteable instructions for your ${target}. You can re-mint or invalidate it anytime.`}
-              </p>
-              <KeyActions mode="mint" />
-            </>
-          )}
+          <CopyField
+            label="Instructions"
+            value={instructions}
+            multiline
+            rows={1}
+            hint={`Paste into your ${target}. Delivery runs through the Penopta MCP connector — no key or token included.`}
+          />
+          {provider.tryNowHref ? (
+            <div className="mt-8 text-sm text-muted">
+              Want to try it out before you add it to a schedule,{" "}
+              <a
+                href={provider.tryNowHref(instructions)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
+              >
+                run it now
+              </a>
+            </div>
+          ) : null}
         </section>
         {provider.troubleHelp ? (
           <p className="mt-3 max-w-2xl text-sm text-muted">

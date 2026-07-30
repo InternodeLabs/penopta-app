@@ -1,7 +1,8 @@
 /**
  * Integration setup copy — edit this file to change instructions and URLs.
- * Both Claude and ChatGPT use the same pasteable instructions (skill URL +
- * bearer key + endpoint); only the step-by-step setup copy differs. Claude
+ * Both Claude and ChatGPT use the same pasteable instructions (the sync skill
+ * inlined; delivery happens through the authenticated Penopta MCP connector, so
+ * there's no key or endpoint). Only the step-by-step setup copy differs: Claude
  * pastes them into a Routine; ChatGPT pastes them into a scheduled task.
  */
 
@@ -55,8 +56,8 @@ export type IntegrationProvider = {
   /** Optional “having trouble?” helper with an external guided link */
   troubleHelp?: IntegrationTroubleHelp;
   /**
-   * Build a “try it now” chat URL that prefills the pasteable instructions.
-   * Only used when a key has been minted.
+   * Build a “try it now” chat URL that prefills the pasteable sync instructions
+   * for a one-off run.
    */
   tryNowHref?: (instructions: string) => string;
 };
@@ -80,30 +81,6 @@ export function getPenoptaSkillUrl(appUrl: string = getPublicAppUrl()): string {
   return `${appUrl.replace(/\/+$/, "")}/api/v1/sync-skill.md`;
 }
 
-function maskKey(key: string): string {
-  return "*".repeat(Math.min(Math.max(key.length, 12), 40));
-}
-
-/** Append the user's minted key to the skill URL as `key=…`. */
-export function skillUrlWithKey(
-  key: string,
-  appUrl: string = getPublicAppUrl(),
-): string {
-  const url = new URL(getPenoptaSkillUrl(appUrl));
-  url.searchParams.set("key", key);
-  return url.toString();
-}
-
-/** Same as `skillUrlWithKey`, but `key` is replaced with asterisks for display. */
-export function skillUrlWithMaskedKey(
-  key: string,
-  appUrl: string = getPublicAppUrl(),
-): string {
-  const url = new URL(getPenoptaSkillUrl(appUrl));
-  url.searchParams.set("key", maskKey(key));
-  return url.toString();
-}
-
 /**
  * Remote MCP server URL. This is not a secret — ChatGPT/Claude connect to it as
  * a custom connector and authenticate via OAuth (sign in with Penopta). No key
@@ -114,30 +91,15 @@ export function mcpConnectorUrl(appUrl: string = getPublicAppUrl()): string {
 }
 
 /**
- * Pasteable sync instructions with the full skill inlined (bearer token +
- * curl + skill body). The skill is embedded directly rather than linked so the
- * agent doesn't need to fetch a remote URL — some agents refuse remote reads,
- * and inlining keeps the routine fully transparent about what it will do.
+ * Pasteable sync instructions with the full skill inlined. Delivery is via the
+ * authenticated Penopta MCP tool (`sync_threads`) — there is no key, token, or
+ * endpoint to configure. The skill is embedded directly rather than linked so
+ * the agent doesn't need to fetch a remote URL (some agents refuse remote
+ * reads), and inlining keeps the routine fully transparent about what it does.
  */
-export function syncRoutineInstructions(
-  key: string,
-  skillBody: string,
-  appUrl: string = getPublicAppUrl(),
-): string {
-  const base = appUrl.replace(/\/+$/, "");
-  const endpoint = `${base}/api/v1/agent-sync`;
+export function syncRoutineInstructions(skillBody: string): string {
   return [
-    "Follow the Penopta sync skill below to review my recent conversations and deliver them to Penopta. The skill describes the exact JSON format we expect.",
-    "",
-    `Endpoint (POST): ${endpoint}`,
-    `Use this as the bearer token: ${key}`,
-    "",
-    "Example as cURL:",
-    "",
-    `curl -X POST ${endpoint} \\`,
-    `  -H "Authorization: Bearer ${key}" \\`,
-    `  -H "Content-Type: application/json" \\`,
-    "  -d @payload.json",
+    "Follow the Penopta sync skill below to review my recent conversations and deliver them to Penopta by calling the Penopta MCP tool `sync_threads`. Your identity and target org come from the authenticated Penopta connector, so there is no key, token, or endpoint to configure — leave all credential fields out.",
     "",
     "----- BEGIN PENOPTA SYNC SKILL -----",
     "",
@@ -145,15 +107,6 @@ export function syncRoutineInstructions(
     "",
     "----- END PENOPTA SYNC SKILL -----",
   ].join("\n");
-}
-
-/** Same instructions with the key redacted for on-screen display. */
-export function syncRoutineInstructionsMasked(
-  key: string,
-  skillBody: string,
-  appUrl: string = getPublicAppUrl(),
-): string {
-  return syncRoutineInstructions(maskKey(key), skillBody, appUrl);
 }
 
 /**
@@ -178,8 +131,9 @@ export function claudeInstallHelpHref(): string {
   const prompt = [
     "Walk me through setting up a Penopta sync routine in Claude.",
     "I want to create a routine named \"Penopta Local Sync\" (local) or \"Penopta Cloud Sync\" (cloud).",
-    "I'll paste Penopta instructions (skill URL, bearer token, and endpoint) into the Instructions field, and I want the schedule set to Hourly.",
-    "Claude's UI may have changed — show me the current steps to create this routine and point out where each setting lives.",
+    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP connector — no key or endpoint) into the Instructions field, and I want the schedule set to Hourly.",
+    "I also need the Penopta connector's tool permissions set to \"Always allow\" so the routine can run without waiting for approval.",
+    "Claude's UI may have changed — show me the current steps to create this routine and set those permissions, and point out where each setting lives.",
   ].join(" ");
 
   return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
@@ -190,7 +144,7 @@ export function chatgptInstallHelpHref(): string {
   const prompt = [
     "Walk me through setting up a Penopta sync as a ChatGPT scheduled task.",
     'I want to create a scheduled task named "Penopta Sync".',
-    "I'll paste Penopta instructions (skill URL, bearer token, and endpoint) into the task description, set it to run in a new chat, and set the schedule to repeat Hourly.",
+    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP server — no key or endpoint) into the task description, set it to run in a new chat, and set the schedule to repeat Hourly.",
     "ChatGPT's UI may have changed — show me the current steps to open Scheduled tasks, create one manually, and point out where each setting lives.",
   ].join(" ");
 
@@ -250,12 +204,12 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Click **Add**, then approve the Penopta sign-in prompt when asked.",
       ],
       steps: [
-        "**Mint** your personal key (re-mint or invalidate anytime).",
-        "**Copy the Instructions** below — they include the skill, your bearer token, and the sync endpoint.",
+        "**Copy the Instructions** below — they contain the full sync skill. Delivery runs through the Penopta MCP connector you added above, so there's no key or token to paste.",
         "In Claude, go to **Routines** and create a new routine.",
         'Name it **"Penopta Local Sync"** for a local routine, or **"Penopta Cloud Sync"** for a cloud one.',
         "Paste the Instructions into the routine’s **Instructions** field.",
         "Set the schedule to **Hourly**, then create the routine.",
+        "Back in **Settings → Connectors → Penopta**, set **Tool permissions** to **Always allow**. Routines run unattended — any tool left on “Needs approval” stops the sync from finishing.",
       ],
       notes: [],
       verifyHref: claudeVerifyHref(),
@@ -291,8 +245,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Click **Save**, then approve the Penopta sign-in prompt when asked.",
       ],
       steps: [
-        "Mint your personal key (re-mint or invalidate anytime).",
-        "Copy the Instructions below — they include the skill, your bearer token, and the sync endpoint.",
+        "Copy the Instructions below — they contain the full sync skill. Delivery runs through the Penopta MCP server you added above, so there's no key or token to paste.",
         "In ChatGPT, open Scheduled tasks, click Create, and choose “Set up manually”.",
         'Name the task "Penopta Sync".',
         "Paste the Instructions into the “Describe what ChatGPT should do” field.",
