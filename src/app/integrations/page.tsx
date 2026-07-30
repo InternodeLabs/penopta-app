@@ -46,11 +46,7 @@ export default async function IntegrationsPage() {
                       <p className="font-semibold text-foreground">
                         {provider.name}
                       </p>
-                      {connected ? (
-                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200/80">
-                          Connected
-                        </span>
-                      ) : null}
+                      
                     </div>
                     <p className="text-sm text-muted">{provider.byline}</p>
                   </div>
