@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { DotGridBackground } from "@/components/DotGridBackground";
 import { loginStartHref } from "@/lib/auth/urls";
 
 function GoogleMark() {
@@ -53,15 +54,7 @@ export function SignInCard({
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.45]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, #d4d4d8 1px, transparent 1px)",
-          backgroundSize: "22px 22px",
-        }}
-      />
+      <DotGridBackground />
 
       <div className="relative w-full max-w-100 rounded-2xl border border-border bg-surface p-8 shadow-sm">
         <h1 className="text-center text-[1.375rem] font-semibold tracking-tight text-foreground">
