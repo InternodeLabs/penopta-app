@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ export function CopyField({
   displayValue,
   multiline = false,
   rows = 3,
+  action,
 }: {
   label: string;
   value: string;
@@ -24,6 +25,8 @@ export function CopyField({
   multiline?: boolean;
   /** Number of rows for multi-line text box. */
   rows?: number;
+  /** Optional secondary button that opens `href` in a new tab. */
+  action?: { label: string; href: string };
 }) {
   const [copied, setCopied] = useState(false);
   const display =
@@ -43,7 +46,7 @@ export function CopyField({
 
   return (
     <div>
-      <p className="mb-1.5 text-sm font-medium text-foreground">{label}</p>
+      <p className="mb-1.5 ml-1 text-sm font-medium text-foreground">{label}</p>
       <div className="flex items-stretch gap-2">
         {multiline ? (
           <textarea
@@ -82,8 +85,19 @@ export function CopyField({
           )}
           {copied ? "Copied" : "Copy"}
         </button>
+        {action ? (
+          <a
+            href={action.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-auto shrink-0 items-center gap-1.5 self-start rounded-lg bg-accent px-3 py-2.5 text-sm font-semibold text-accent-foreground no-underline transition hover:opacity-90"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            {action.label}
+          </a>
+        ) : null}
       </div>
-      {hint ? <p className="mt-1.5 text-xs text-muted">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 ml-1 text-xs text-muted">{hint}</p> : null}
     </div>
   );
 }

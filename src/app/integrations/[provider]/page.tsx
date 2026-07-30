@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
+import { CheckCircle2, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -14,10 +15,12 @@ import {
   mcpConnectorUrl,
   syncRoutineInstructions,
   syncRoutineInstructionsMasked,
+  VERIFY_CHAT_COMMAND,
 } from "@/lib/integrations/providers";
 import { readSyncSkill } from "@/lib/integrations/skill";
 import { getActiveApiKey } from "@/lib/keys/data";
 import { resolveActiveOrg } from "@/lib/orgs/data";
+import { getLatestMcpVerification } from "@/lib/oauth/tokens";
 
 /** Render step copy with simple `**bold**` emphasis. */
 function renderStepText(step: string) {
@@ -50,6 +53,8 @@ export default async function IntegrationSetupPage({
   const ProviderIcon = provider.icon;
   const { activeOrg } = await resolveActiveOrg(session.user.id);
   const activeKey = await getActiveApiKey(session.user.id, activeOrg.id);
+  const mcpVerification = await getLatestMcpVerification(session.user.id);
+  const mcpVerified = Boolean(mcpVerification);
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
@@ -114,21 +119,64 @@ export default async function IntegrationSetupPage({
             value={mcpUrl}
             hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
           />
-          {provider.mcpTroubleHelp ? (
-            <p className="text-sm text-muted">
-              {provider.mcpTroubleHelp.text}{" "}
-              <a
-                href={provider.mcpTroubleHelp.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
-              >
-                {provider.mcpTroubleHelp.linkLabel}
-              </a>
+          
+          {mcpVerified && mcpVerification ? (
+            <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+              <span>
+                Connection verified
+                {mcpVerification.agent ? ` via ${mcpVerification.agent}` : ""}{" "}
+                {formatDistanceToNow(mcpVerification.verifiedAt, {
+                  addSuffix: true,
+                })}
+                .
+              </span>
             </p>
-          ) : null}
+          ) : (
+            null
+          )}
         </section>
 
+        {!mcpVerified ? (
+          <section className="mt-8 max-w-2xl rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 px-5 py-6">
+            <div className="flex items-center gap-2">
+              <Lock className="size-4 text-muted" aria-hidden />
+              <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
+                Next: Sync your conversations to Penopta
+              </h2>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+              Verify the MCP connection. Once verified in {provider.name}, we can
+              reach Penopta, the scheduled-sync setup appears here.
+            </p>
+            <div className="mt-4">
+              <CopyField
+                label={`Run this command in ${provider.name} chat`}
+                value={VERIFY_CHAT_COMMAND}
+                action={
+                  provider.verifyHref
+                    ? { label: "Run", href: provider.verifyHref }
+                    : undefined
+                }
+                hint={`Run opens ${provider.name} with the command prefilled. Reload this page once it confirms.`}
+              />
+            </div>
+            {provider.mcpTroubleHelp ? (
+              <p className="mt-4 text-sm text-muted">
+                {provider.mcpTroubleHelp.text}{" "}
+                <a
+                  href={provider.mcpTroubleHelp.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
+                >
+                  {provider.mcpTroubleHelp.linkLabel}
+                </a>
+              </p>
+            ) : null}
+          </section>
+        ) : (
+          <>
         <section className="mt-8 max-w-2xl">
           <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
             Sync your conversations to Penopta automatically
@@ -196,17 +244,6 @@ export default async function IntegrationSetupPage({
             </>
           )}
         </section>
-
-        {provider.notes?.length ? (
-          <section className="mt-8 max-w-2xl">
-            <ul className="space-y-1 text-xs text-muted">
-              {provider.notes.map((note) => (
-                <li key={note}>• {note}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {provider.troubleHelp ? (
           <p className="mt-3 max-w-2xl text-sm text-muted">
             {provider.troubleHelp.text}{" "}
@@ -220,6 +257,20 @@ export default async function IntegrationSetupPage({
             </a>
           </p>
         ) : null}
+          </>
+        )}
+
+        {provider.notes?.length ? (
+          <section className="mt-8 max-w-2xl">
+            <ul className="space-y-1 text-xs text-muted">
+              {provider.notes.map((note) => (
+                <li key={note}>• {note}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+       
       </main>
     </IntegrationsShell>
   );

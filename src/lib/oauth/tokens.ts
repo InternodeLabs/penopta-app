@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
 
 import { randomToken } from "@/lib/auth/pkce";
 import { db } from "@/lib/db/client";
@@ -125,6 +125,40 @@ export async function markTokenVerified(
     .update(oauthTokens)
     .set({ lastVerifiedAt: new Date(), lastVerifiedAgent: agent })
     .where(eq(oauthTokens.accessTokenHash, accessTokenHash));
+}
+
+/** The last successful `verify_penopta` call on a user's MCP connection. */
+export interface McpVerification {
+  verifiedAt: Date;
+  agent: string | null;
+}
+
+/**
+ * Latest MCP verification across a user's connections, or null if they've never
+ * run `verify_penopta`. Used to gate connector-dependent UI until we've seen the
+ * MCP server actually reach us.
+ */
+export async function getLatestMcpVerification(
+  userId: string,
+): Promise<McpVerification | null> {
+  const rows = await db
+    .select({
+      verifiedAt: oauthTokens.lastVerifiedAt,
+      agent: oauthTokens.lastVerifiedAgent,
+    })
+    .from(oauthTokens)
+    .where(
+      and(
+        eq(oauthTokens.userId, userId),
+        isNotNull(oauthTokens.lastVerifiedAt),
+      ),
+    )
+    .orderBy(desc(oauthTokens.lastVerifiedAt))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row?.verifiedAt) return null;
+  return { verifiedAt: row.verifiedAt, agent: row.agent };
 }
 
 /**

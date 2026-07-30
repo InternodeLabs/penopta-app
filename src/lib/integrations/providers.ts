@@ -50,6 +50,8 @@ export type IntegrationProvider = {
   notes?: string[];
   /** Optional “having trouble?” helper shown at the end of the MCP section */
   mcpTroubleHelp?: IntegrationTroubleHelp;
+  /** Opens a new chat in the provider with the verify command prefilled */
+  verifyHref?: string;
   /** Optional “having trouble?” helper with an external guided link */
   troubleHelp?: IntegrationTroubleHelp;
   /**
@@ -154,6 +156,23 @@ export function syncRoutineInstructionsMasked(
   return syncRoutineInstructions(maskKey(key), skillBody, appUrl);
 }
 
+/**
+ * The one-liner we ask users to send in provider chat so the connector calls
+ * `verify_penopta`, which is what unlocks the sync setup on the setup page.
+ */
+export const VERIFY_CHAT_COMMAND =
+  "Run verify_penopta tool";
+
+/** Open Claude with the verify command prefilled. */
+export function claudeVerifyHref(): string {
+  return `https://claude.ai/new?q=${encodeURIComponent(VERIFY_CHAT_COMMAND)}`;
+}
+
+/** Open ChatGPT with the verify command prefilled. */
+export function chatgptVerifyHref(): string {
+  return `https://chatgpt.com/?q=${encodeURIComponent(VERIFY_CHAT_COMMAND)}`;
+}
+
 /** Prefilled Claude chat that walks the user through Penopta routine setup. */
 export function claudeInstallHelpHref(): string {
   const prompt = [
@@ -239,13 +258,14 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Set the schedule to **Hourly**, then create the routine.",
       ],
       notes: [],
+      verifyHref: claudeVerifyHref(),
       mcpTroubleHelp: {
-        text: "Use Claude's own chat for up-to-date setup instructions:",
+        text: "Need help? Use chat for latest setup instructions:",
         linkLabel: "Ask Claude for guidance",
         href: claudeMcpHelpHref(),
       },
       troubleHelp: {
-        text: "Use Claude's own chat for up-to-date setup instructions:",
+        text: "Need help? Use chat for latest setup instructions:",
         linkLabel: "Ask Claude for guidance",
         href: claudeInstallHelpHref(),
       },
@@ -280,6 +300,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Under Frequency, set Repeat to Hourly, then save the task.",
       ],
       notes: [],
+      verifyHref: chatgptVerifyHref(),
       mcpTroubleHelp: {
         text: "Use ChatGPT's own chat for up-to-date setup instructions:",
         linkLabel: "Ask ChatGPT for guidance",
