@@ -18,20 +18,28 @@ import {
 import { readSyncSkill } from "@/lib/integrations/skill";
 import { getLatestMcpVerification } from "@/lib/oauth/tokens";
 
-/** Render step copy with simple `**bold**` emphasis. */
+/** Render step copy with `**bold**` and `__underline__`. */
 function renderStepText(step: string) {
-  return step.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-semibold">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      part
-    ),
-  );
+  return step.split(/(\*\*[^*]+\*\*|__[^_]+__)/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("__") && part.endsWith("__")) {
+      return (
+        <span key={i} className="underline underline-offset-4">
+          {part.slice(2, -2)}
+        </span>
+      );
+    }
+    return part;
+  });
 }
 
-const TEST_MCP_VERIFICATION = false
+
 
 export default async function IntegrationSetupPage({
   params,
@@ -50,7 +58,7 @@ export default async function IntegrationSetupPage({
 
   const ProviderIcon = provider.icon;
   const mcpVerification = await getLatestMcpVerification(session.user.id);
-  const mcpVerified = TEST_MCP_VERIFICATION || Boolean(mcpVerification);
+  const mcpVerified = Boolean(mcpVerification);
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";

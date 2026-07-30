@@ -252,7 +252,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "Paste the Instructions into the “Describe what ChatGPT should do” field.",
         "Under Details, set Runs in to “New chat”.",
         "Under Frequency, set Repeat to Hourly, then save the task.",
-        "**Run the scheduled task once** now. When Penopta tools ask for permission, choose **Always allow** — hourly runs are unattended, and anything left needing approval will stop the sync from finishing.",
+        "**Run the scheduled task now** once. Penopta will ask for your permission on each step. Choose **Always allow**, __anything not approved will stop the sync from running in the future.__",
       ],
       notes: [],
       verifyHref: chatgptVerifyHref(),
