@@ -1,14 +1,19 @@
+import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { CopyField } from "@/components/CopyField";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
+import { KeyActions } from "@/components/KeyActions";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
   getIntegrationProvider,
   listIntegrationProviders,
+  skillUrlWithKey,
+  skillUrlWithMaskedKey,
 } from "@/lib/integrations/providers";
+import { getActiveApiKey } from "@/lib/keys/data";
 
 export default async function IntegrationSetupPage({
   params,
@@ -24,6 +29,12 @@ export default async function IntegrationSetupPage({
   const providers = listIntegrationProviders();
   const provider = getIntegrationProvider(providerId);
   if (!provider) notFound();
+
+  const activeKey = await getActiveApiKey(session.user.id);
+  const skillUrl = activeKey ? skillUrlWithKey(activeKey.key) : null;
+  const skillUrlDisplay = activeKey
+    ? skillUrlWithMaskedKey(activeKey.key)
+    : null;
 
   return (
     <IntegrationsShell providers={providers} activeProviderId={provider.id}>
@@ -65,18 +76,47 @@ export default async function IntegrationSetupPage({
           </ol>
         </section>
 
-        <section className="mt-8 max-w-2xl space-y-5">
+        <section className="mt-8 max-w-2xl space-y-4">
           <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-            URLs to copy
+            Your key
           </h2>
-          {provider.copyFields.map((field) => (
-            <CopyField
-              key={field.label}
-              label={field.label}
-              value={field.value}
-              hint={field.hint}
-            />
-          ))}
+
+          {activeKey && skillUrl && skillUrlDisplay ? (
+            <>
+              <p className="text-sm text-muted">
+                Active until{" "}
+                <span className="font-medium text-foreground">
+                  {activeKey.expiresAt.toLocaleString()}
+                </span>{" "}
+                (
+                {formatDistanceToNow(activeKey.expiresAt, {
+                  addSuffix: true,
+                })}
+                ). Re-mint to rotate, or invalidate to revoke immediately.
+              </p>
+              <CopyField
+                label="Skill URL"
+                value={skillUrl}
+                displayValue={skillUrlDisplay}
+                hint="Unique to your account — includes your key. Do not share."
+              />
+              <CopyField
+                label="Key only"
+                value={activeKey.key}
+                masked
+                hint="Unique to your account — includes your key. Do not share."
+              />
+              <KeyActions mode="manage" />
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted">
+                Mint a key to unlock your personal skill URL. You can re-mint or
+                invalidate it anytime.
+              </p>
+              <KeyActions mode="mint" />
+            </>
+          )}
         </section>
 
         {provider.notes?.length ? (
@@ -87,6 +127,20 @@ export default async function IntegrationSetupPage({
               ))}
             </ul>
           </section>
+        ) : null}
+
+        {provider.troubleHelp ? (
+          <p className="mt-8 max-w-2xl text-sm text-muted">
+            {provider.troubleHelp.text}{" "}
+            <a
+              href={provider.troubleHelp.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground underline decoration-muted underline-offset-2 transition hover:decoration-foreground"
+            >
+              {provider.troubleHelp.linkLabel}
+            </a>
+          </p>
         ) : null}
       </main>
     </IntegrationsShell>

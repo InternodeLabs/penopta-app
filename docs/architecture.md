@@ -19,9 +19,54 @@ owner_user_id (portal id)
 visibility: public | private
 created_at
 updated_at
+
+user_api_key
+───────────
+id (uuid)
+owner_user_id (portal id)
+key (unique opaque secret)
+expires_at
+created_at
+
+agent_sync_run
+──────────────
+id (uuid)
+owner_user_id (portal id)
+schema_version, agent_id, run_id
+window_start / window_end
+agent_name / agent_model / agent_effort
+capture_coverage (jsonb), run_summary (jsonb)
+created_at
+unique (owner_user_id, run_id)
+
+agent_thread
+────────────
+id (uuid)
+owner_user_id + thread_id (unique, stable agent id)
+title, kind, status, project_context
+source_activity / working_state (jsonb)
+last_agent_* facets + last_run_id / last_synced_at
+
+agent_thread_snapshot
+─────────────────────
+per-run copy of a thread (history), FK → agent_sync_run
 ```
 
-Defined in `src/lib/db/schema.ts`. Queried via `src/lib/projects/data.ts`.
+Defined in `src/lib/db/schema.ts`. Queried via `src/lib/projects/data.ts` and
+`src/lib/keys/data.ts`. Ingest via `src/lib/ingest/`.
+
+One active (non-expired) key per user. Users can **re-mint** (invalidate + new
+key) or **invalidate** anytime. Mint appends `key=…` to the Skillbase skill URL
+on the integrations setup pages. External apps can resolve the portal user with
+`resolveUserIdByApiKey` (expired/invalidated keys do not match).
+
+### Agent sync ingest
+
+`POST /api/v1/agent-sync` accepts windowed thread-context payloads from external
+agents. Auth is `Authorization: Bearer <user_api_key>`; the body field
+`penopta_user_id` must match the key’s owner. Each `runId` is ingested once
+(duplicate → 200). Threads are upserted for current-state reads; snapshots keep
+per-run history for facets like agent/model over time.
 
 ### Reads
 
@@ -77,6 +122,7 @@ production hostname).
 src/
   app/
     api/auth/{login,callback,logout}/route.ts
+    api/v1/agent-sync/route.ts     # Bearer-key agent thread ingest
     login/page.tsx                 # forwards auth errors to `/?error=`
     authenticating/page.tsx        # brief pause before PKCE login
     page.tsx                       # sign-in (logged out) / workspace (logged in)
@@ -85,6 +131,8 @@ src/
   lib/
     auth/                          # session, PKCE, portal config
     db/                            # client, schema, seed
+    keys/                          # user API key mint / resolve
+    ingest/                        # agent-sync validate + persist
     projects/data.ts               # visibility-aware reads
 docker-compose.yml                 # local Postgres
 drizzle/                           # SQL migrations

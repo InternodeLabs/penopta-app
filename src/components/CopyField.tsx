@@ -8,12 +8,21 @@ export function CopyField({
   label,
   value,
   hint,
+  masked = false,
+  displayValue,
 }: {
   label: string;
   value: string;
   hint?: string;
+  /** Show bullets in the field; Copy still writes the clear value. */
+  masked?: boolean;
+  /** Optional display text (e.g. URL with key redacted). Copy still uses `value`. */
+  displayValue?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const display =
+    displayValue ??
+    (masked ? "*".repeat(Math.min(Math.max(value.length, 12), 40)) : value);
 
   async function copy() {
     try {
@@ -30,8 +39,15 @@ export function CopyField({
     <div>
       <p className="mb-1.5 text-sm font-medium text-foreground">{label}</p>
       <div className="flex items-stretch gap-2">
-        <code className="flex min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs text-foreground">
-          {value}
+        <code
+          className="flex min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-xs text-foreground"
+          title={
+            masked || displayValue
+              ? "Hidden — use Copy for the clear value"
+              : undefined
+          }
+        >
+          {display}
         </code>
         <button
           type="button"
