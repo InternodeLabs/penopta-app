@@ -23,7 +23,13 @@ export function WorkspaceEmpty({
   projects?: ProjectRow[];
   ownerNames?: Record<string, string>;
 }) {
-  const hasThreads = threads.length > 0;
+  const canStartProject = threads.length >= 2;
+  const threadOptions = threads.map((thread) => ({
+    id: thread.id,
+    title: thread.title,
+    lastAgentName: thread.lastAgentName,
+    status: thread.status,
+  }));
 
   return (
     <WorkspaceShell
@@ -35,8 +41,8 @@ export function WorkspaceEmpty({
       ownerNames={ownerNames}
     >
       <main className="flex flex-1 items-center justify-center p-6">
-        {hasThreads ? (
-          <StartProjectModal />
+        {canStartProject ? (
+          <StartProjectModal threads={threadOptions} />
         ) : (
           <div className="w-full max-w-sm rounded-2xl border border-border bg-surface px-8 py-9 text-center shadow-sm">
             <MessageSquare
@@ -45,11 +51,14 @@ export function WorkspaceEmpty({
               strokeWidth={1.5}
             />
             <h1 className="mt-4 text-lg font-semibold tracking-tight">
-              Start collaborating
+              {threads.length === 1
+                ? "Need one more thread"
+                : "Start collaborating"}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Connect your chat to start collaborating with others via your
-              agents.
+              {threads.length === 1
+                ? "Projects need at least two agent threads. Connect another agent or sync another conversation."
+                : "Connect your chat to start collaborating with others via your agents."}
             </p>
             <Link
               href="/integrations"

@@ -72,13 +72,6 @@ export default async function ProjectDetailPage({
         </div>
 
         <div className="px-3 pt-3">
-          <OrgSwitcher
-            activeOrgId={activeOrg.id}
-            orgs={toOrgSwitcherItems(memberships)}
-          />
-        </div>
-
-        <div className="px-3 pt-3">
           <Link
             href="/"
             className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
@@ -122,15 +115,10 @@ export default async function ProjectDetailPage({
         </div>
 
         <div className="border-t border-border px-4 py-4">
-          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Integrations
-          </p>
-          <Link
-            href="/integrations"
-            className="mt-2 block text-sm text-muted transition hover:text-foreground"
-          >
-            No integrations yet
-          </Link>
+          <OrgSwitcher
+            activeOrgId={activeOrg.id}
+            orgs={toOrgSwitcherItems(memberships)}
+          />
         </div>
       </aside>
 

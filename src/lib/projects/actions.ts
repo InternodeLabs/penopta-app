@@ -27,6 +27,7 @@ function slugify(name: string): string {
 /** Create a project owned by the current user, returning its id. */
 export async function createProjectAction(
   name: string,
+  threadIds: string[],
 ): Promise<CreateProjectState> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in to start a project." };
@@ -34,8 +35,27 @@ export async function createProjectAction(
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "Give your project a name." };
 
+  const unique = Array.from(new Set(threadIds));
+  if (unique.length < 2) {
+    return { ok: false, error: "Select at least two agent threads." };
+  }
+
   try {
     const { activeOrg } = await resolveActiveOrg(session.user.id);
+
+    const valid = await db
+      .select({ id: agentThreads.id })
+      .from(agentThreads)
+      .where(
+        and(
+          eq(agentThreads.orgId, activeOrg.id),
+          inArray(agentThreads.id, unique),
+        ),
+      );
+    const validIds = valid.map((t) => t.id);
+    if (validIds.length < 2) {
+      return { ok: false, error: "Select at least two agent threads." };
+    }
 
     let slug = slugify(trimmed);
     const existing = await db
@@ -55,7 +75,17 @@ export async function createProjectAction(
       })
       .returning({ id: projects.id });
 
+    await db.insert(projectThreads).values(
+      validIds.map((agentThreadId) => ({
+        orgId: activeOrg.id,
+        projectId: row.id,
+        agentThreadId,
+        addedByUserId: session.user.id,
+      })),
+    );
+
     revalidatePath("/");
+    revalidatePath(`/projects/${row.id}`);
     return { ok: true, id: row.id };
   } catch (err) {
     console.error("createProjectAction", err);

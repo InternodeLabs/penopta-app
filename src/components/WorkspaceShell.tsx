@@ -41,18 +41,20 @@ export function WorkspaceShell({
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
         <div className="border-b border-border px-4 py-4">
           <Link href="/">
-            <BrandLogo className="h-7" />
+            <BrandLogo className="h-6" />
           </Link>
         </div>
 
-        {activeOrgId ? (
-          <div className="px-3 pt-3">
-            <OrgSwitcher activeOrgId={activeOrgId} orgs={orgs} />
-          </div>
-        ) : null}
-
         <div className="px-3 pt-3">
-          <AddProjectButton enabled={threads.length > 0} />
+          <AddProjectButton
+            enabled={threads.length >= 2}
+            threads={threads.map((thread) => ({
+              id: thread.id,
+              title: thread.title,
+              lastAgentName: thread.lastAgentName,
+              status: thread.status,
+            }))}
+          />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
@@ -125,17 +127,11 @@ export function WorkspaceShell({
           )}
         </div>
 
-        <div className="border-t border-border px-4 py-4">
-          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Integrations
-          </p>
-          <Link
-            href="/integrations"
-            className="mt-2 block text-sm text-muted transition hover:text-foreground"
-          >
-            Manage integrations
-          </Link>
-        </div>
+        {activeOrgId ? (
+          <div className="border-t border-border px-4 py-4">
+            <OrgSwitcher activeOrgId={activeOrgId} orgs={orgs} />
+          </div>
+        ) : null}
       </aside>
 
       <div className="relative flex min-w-0 flex-1 flex-col">

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -14,7 +15,10 @@ export interface OrgSwitcherItem {
   isPersonal: boolean;
 }
 
-/** Sidebar control to view the active org, switch orgs, or create a new one. */
+/**
+ * Footer control (matches the "Integrations" block): shows the active org and,
+ * when clicked, opens an upward popover to switch orgs or create a new one.
+ */
 export function OrgSwitcher({
   activeOrgId,
   orgs,
@@ -33,7 +37,10 @@ export function OrgSwitcher({
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setCreating(false);
+      }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -73,30 +80,26 @@ export function OrgSwitcher({
 
   return (
     <div ref={rootRef} className="relative">
+      
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-left transition hover:bg-background"
         aria-haspopup="menu"
         aria-expanded={open}
+        className="mt-2 flex w-full items-center justify-between gap-2 text-sm text-muted transition hover:text-foreground"
       >
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-foreground">
-            {active?.name ?? "Organization"}
-          </span>
-          <span className="block text-[11px] text-muted">
-            {active?.isPersonal ? "Personal" : "Organization"}
-          </span>
+        <span className="min-w-0 truncate text-left" title={active?.name}>
+          {active?.name ?? "Organization"}
         </span>
-        <ChevronsUpDown aria-hidden className="h-4 w-4 shrink-0 text-muted" />
+        <ChevronsUpDown aria-hidden className="h-3.5 w-3.5 shrink-0" />
       </button>
 
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 right-0 z-30 mt-1 rounded-lg border border-border bg-surface p-1 shadow-lg"
+          className="absolute bottom-full left-0 right-0 z-30 mb-2 rounded-lg border border-border bg-surface p-1 shadow-lg"
         >
-          <ul className="max-h-64 overflow-y-auto">
+          <ul className="max-h-60 overflow-y-auto">
             {orgs.map((org) => {
               const isActive = org.id === activeOrgId;
               return (
@@ -107,11 +110,17 @@ export function OrgSwitcher({
                     disabled={pending}
                     className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-background disabled:opacity-60"
                   >
-                    <span className="min-w-0 truncate text-foreground" title={org.name}>
+                    <span
+                      className="min-w-0 truncate text-foreground"
+                      title={org.name}
+                    >
                       {org.name}
                     </span>
                     {isActive ? (
-                      <Check aria-hidden className="h-4 w-4 shrink-0 text-accent" />
+                      <Check
+                        aria-hidden
+                        className="h-4 w-4 shrink-0 text-accent"
+                      />
                     ) : null}
                   </button>
                 </li>
@@ -161,6 +170,16 @@ export function OrgSwitcher({
               Create organization
             </button>
           )}
+
+          <div className="my-1 h-px bg-border" />
+
+          <Link
+            href="/integrations"
+            onClick={() => setOpen(false)}
+            className="block rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-background hover:text-foreground"
+          >
+            Manage integrations
+          </Link>
         </div>
       ) : null}
     </div>

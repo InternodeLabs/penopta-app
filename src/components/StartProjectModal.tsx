@@ -3,10 +3,11 @@
 import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 
+import type { ThreadOption } from "@/components/ManageProjectThreads";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
 
 /** Empty-state card + dialog for starting a project once agents are connected. */
-export function StartProjectModal() {
+export function StartProjectModal({ threads }: { threads: ThreadOption[] }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -21,8 +22,8 @@ export function StartProjectModal() {
           Start a project
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Group your agent threads into a project to organize and share the
-          work.
+          Group at least two agent threads into a project to organize and share
+          the work.
         </p>
         <button
           type="button"
@@ -33,7 +34,11 @@ export function StartProjectModal() {
         </button>
       </div>
 
-      <NewProjectDialog open={open} onClose={() => setOpen(false)} />
+      <NewProjectDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        threads={threads}
+      />
     </>
   );
 }

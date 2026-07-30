@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 /** Full Penopta wordmark (icon + black brand name) — header branding. */
@@ -8,12 +7,14 @@ export function BrandLogo({
   className?: string;
 }) {
   return (
-    <Image
-      src="/brand/logo-full.png"
+    // eslint-disable-next-line @next/next/no-img-element -- SVG wordmark; next/image adds nothing for vectors
+    <img
+      src="/brand/logo-full-black.svg"
       alt="Penopta"
-      width={1024}
-      height={260}
-      priority
+      width={598}
+      height={152}
+ 
+ 
       className={`h-6 w-auto ${className ?? ""}`}
     />
   );
@@ -26,8 +27,9 @@ export function BrandIcon({
   className?: string;
 }) {
   return (
-    <Image
-      src="/brand/icon.png"
+    // eslint-disable-next-line @next/next/no-img-element -- SVG mark; next/image adds nothing for vectors
+    <img
+      src="/brand/icon.svg"
       alt=""
       aria-hidden
       width={380}
