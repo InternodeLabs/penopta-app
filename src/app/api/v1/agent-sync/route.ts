@@ -11,6 +11,7 @@ import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
  * and `penopta_user_id` in the body must match that key's owner.
  */
 export async function POST(request: NextRequest) {
+  console.log("POST /api/v1/agent-sync", request.body, request.headers.get("authorization"));
   const ownerUserId = await resolveOwnerFromBearer(
     request.headers.get("authorization"),
   );
