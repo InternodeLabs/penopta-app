@@ -111,18 +111,23 @@ export function mcpConnectorUrl(appUrl: string = getPublicAppUrl()): string {
   return `${appUrl.replace(/\/+$/, "")}/api/mcp`;
 }
 
-/** Pasteable sync instructions (skill + bearer token + curl). */
+/**
+ * Pasteable sync instructions with the full skill inlined (bearer token +
+ * curl + skill body). The skill is embedded directly rather than linked so the
+ * agent doesn't need to fetch a remote URL — some agents refuse remote reads,
+ * and inlining keeps the routine fully transparent about what it will do.
+ */
 export function syncRoutineInstructions(
   key: string,
+  skillBody: string,
   appUrl: string = getPublicAppUrl(),
 ): string {
   const base = appUrl.replace(/\/+$/, "");
-  const skillUrl = getPenoptaSkillUrl(base);
   const endpoint = `${base}/api/v1/agent-sync`;
   return [
-    `Use this skill ${skillUrl} to review my recent conversations. It describes the format we expect in json.`,
+    "Follow the Penopta sync skill below to review my recent conversations and deliver them to Penopta. The skill describes the exact JSON format we expect.",
     "",
-    "Endpoint: POST",
+    `Endpoint (POST): ${endpoint}`,
     `Use this as the bearer token: ${key}`,
     "",
     "Example as cURL:",
@@ -131,15 +136,22 @@ export function syncRoutineInstructions(
     `  -H "Authorization: Bearer ${key}" \\`,
     `  -H "Content-Type: application/json" \\`,
     "  -d @payload.json",
+    "",
+    "----- BEGIN PENOPTA SYNC SKILL -----",
+    "",
+    skillBody.trim(),
+    "",
+    "----- END PENOPTA SYNC SKILL -----",
   ].join("\n");
 }
 
 /** Same instructions with the key redacted for on-screen display. */
 export function syncRoutineInstructionsMasked(
   key: string,
+  skillBody: string,
   appUrl: string = getPublicAppUrl(),
 ): string {
-  return syncRoutineInstructions(maskKey(key), appUrl);
+  return syncRoutineInstructions(maskKey(key), skillBody, appUrl);
 }
 
 /** Prefilled Claude chat that walks the user through Penopta routine setup. */

@@ -1,19 +1,13 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import { NextResponse } from "next/server";
 
-const SYNC_SKILL_PATH = path.join(
-  process.cwd(),
-  "src/lib/integrations/sync-skill.md",
-);
+import { readSyncSkill } from "@/lib/integrations/skill";
 
 /**
  * Public skill document for the hourly thread-context sync agent.
  * Returns raw markdown from `src/lib/integrations/sync-skill.md`.
  */
 export async function GET() {
-  const body = await readFile(SYNC_SKILL_PATH, "utf8");
+  const body = await readSyncSkill();
   return new NextResponse(body, {
     status: 200,
     headers: {

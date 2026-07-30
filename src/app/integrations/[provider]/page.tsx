@@ -15,6 +15,7 @@ import {
   syncRoutineInstructions,
   syncRoutineInstructionsMasked,
 } from "@/lib/integrations/providers";
+import { readSyncSkill } from "@/lib/integrations/skill";
 import { getActiveApiKey } from "@/lib/keys/data";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 
@@ -52,12 +53,15 @@ export default async function IntegrationSetupPage({
   const appUrl = getPublicAppUrl();
   const target =
     provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
-  const instructions = activeKey
-    ? syncRoutineInstructions(activeKey.key, appUrl)
-    : null;
-  const instructionsDisplay = activeKey
-    ? syncRoutineInstructionsMasked(activeKey.key, appUrl)
-    : null;
+  const skillBody = activeKey ? await readSyncSkill() : null;
+  const instructions =
+    activeKey && skillBody
+      ? syncRoutineInstructions(activeKey.key, skillBody, appUrl)
+      : null;
+  const instructionsDisplay =
+    activeKey && skillBody
+      ? syncRoutineInstructionsMasked(activeKey.key, skillBody, appUrl)
+      : null;
   const mcpUrl = mcpConnectorUrl(appUrl);
 
   return (
