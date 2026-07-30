@@ -10,9 +10,15 @@ import { db } from "@/lib/db/client";
 import { agentThreads, projects, projectThreads } from "@/lib/db/schema";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 
+export type ProjectVisibility = "public" | "private";
+
 export type CreateProjectState =
   | { ok: true; id: string }
   | { ok: false; error: string };
+
+function isVisibility(value: string): value is ProjectVisibility {
+  return value === "public" || value === "private";
+}
 
 function slugify(name: string): string {
   const base = name
@@ -28,12 +34,16 @@ function slugify(name: string): string {
 export async function createProjectAction(
   name: string,
   threadIds: string[],
+  visibility: ProjectVisibility = "private",
 ): Promise<CreateProjectState> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in to start a project." };
 
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "Give your project a name." };
+  if (!isVisibility(visibility)) {
+    return { ok: false, error: "Pick private or public." };
+  }
 
   const unique = Array.from(new Set(threadIds));
   if (unique.length < 2) {
@@ -72,6 +82,7 @@ export async function createProjectAction(
         slug,
         orgId: activeOrg.id,
         ownerUserId: session.user.id,
+        visibility,
       })
       .returning({ id: projects.id });
 
@@ -90,6 +101,53 @@ export async function createProjectAction(
   } catch (err) {
     console.error("createProjectAction", err);
     return { ok: false, error: "Couldn't start the project. Try again." };
+  }
+}
+
+export type SetProjectVisibilityState =
+  | { ok: true; visibility: ProjectVisibility }
+  | { ok: false; error: string };
+
+/**
+ * Set whether a project the current user owns is private (owner only) or
+ * public (visible to every member of the active org).
+ */
+export async function setProjectVisibilityAction(
+  id: string,
+  visibility: ProjectVisibility,
+): Promise<SetProjectVisibilityState> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sign in to update visibility." };
+  if (!isVisibility(visibility)) {
+    return { ok: false, error: "Pick private or public." };
+  }
+
+  try {
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+
+    const [row] = await db
+      .update(projects)
+      .set({ visibility, updatedAt: new Date() })
+      .where(
+        and(
+          eq(projects.id, id),
+          eq(projects.orgId, activeOrg.id),
+          eq(projects.ownerUserId, session.user.id),
+        ),
+      )
+      .returning({
+        id: projects.id,
+        visibility: projects.visibility,
+      });
+
+    if (!row) return { ok: false, error: "Project not found." };
+
+    revalidatePath("/");
+    revalidatePath(`/projects/${id}`);
+    return { ok: true, visibility: row.visibility };
+  } catch (err) {
+    console.error("setProjectVisibilityAction", err);
+    return { ok: false, error: "Couldn't update visibility. Try again." };
   }
 }
 

@@ -10,6 +10,7 @@ import {
   ProjectActivityFeed,
 } from "@/components/ProjectActivityFeed";
 import { ProjectHeader } from "@/components/ProjectHeader";
+import { ProjectVisibilityControl } from "@/components/ProjectVisibilityControl";
 import { lookupPortalUsers } from "@/lib/auth/portal-users";
 import { getSession } from "@/lib/auth/server";
 import type { SessionUser } from "@/lib/auth/session";
@@ -67,6 +68,7 @@ export default async function ProjectDetailPage({
   );
 
   const user = session.user;
+  const isOwner = project.ownerUserId === user.id;
   const displayName = user.name || user.email;
   const agentCount = new Set(
     orgThreads.map((t) => t.lastAgentName).filter(Boolean),
@@ -141,7 +143,11 @@ export default async function ProjectDetailPage({
 
       {/* Center: conversation */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <ProjectHeader projectId={project.id} name={project.name} />
+        <ProjectHeader
+          projectId={project.id}
+          name={project.name}
+          isOwner={isOwner}
+        />
 
         <main
           className={
@@ -199,6 +205,19 @@ export default async function ProjectDetailPage({
         <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
           Details
         </p>
+
+        <section>
+          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
+            Visibility
+          </p>
+          <div className="mt-3">
+            <ProjectVisibilityControl
+              projectId={project.id}
+              visibility={project.visibility}
+              canEdit={isOwner}
+            />
+          </div>
+        </section>
 
         <section>
           <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">

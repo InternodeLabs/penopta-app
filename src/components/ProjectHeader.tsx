@@ -11,9 +11,11 @@ import { deleteProjectAction, renameProjectAction } from "@/lib/projects/actions
 export function ProjectHeader({
   projectId,
   name,
+  isOwner = false,
 }: {
   projectId: string;
   name: string;
+  isOwner?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -91,7 +93,7 @@ export function ProjectHeader({
       )}
 
       <div className="flex items-center gap-2">
-        {editing ? (
+        {isOwner && editing ? (
           <>
             <button
               type="button"
@@ -112,9 +114,8 @@ export function ProjectHeader({
               {pending ? "Saving…" : "Save"}
             </button>
           </>
-        ) : (
+        ) : isOwner ? (
           <>
-           
             <button
               type="button"
               onClick={startEdit}
@@ -133,7 +134,7 @@ export function ProjectHeader({
               <Trash2 aria-hidden className="h-4 w-4" />
             </button>
           </>
-        )}
+        ) : null}
       </div>
 
       {confirmingDelete ? (
