@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AddProjectButton } from "@/components/AddProjectButton";
 import { BrandLogo } from "@/components/Brand";
 import type { SessionUser } from "@/lib/auth/session";
 import type { AgentThreadRow } from "@/lib/db/schema";
@@ -34,15 +35,7 @@ export function WorkspaceShell({
         </div>
 
         <div className="px-3 pt-3">
-          <button
-            type="button"
-            disabled
-            title="Connect an agent first"
-            className="flex h-9 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-border bg-surface text-sm font-medium text-muted opacity-70"
-          >
-            <span aria-hidden>+</span>
-            Add new Project
-          </button>
+          <AddProjectButton enabled={threads.length > 0} />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
