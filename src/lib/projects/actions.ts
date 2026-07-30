@@ -34,7 +34,7 @@ function slugify(name: string): string {
 export async function createProjectAction(
   name: string,
   threadIds: string[],
-  visibility: ProjectVisibility = "private",
+  visibility: ProjectVisibility = "public",
 ): Promise<CreateProjectState> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in to start a project." };

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import type { ThreadOption } from "@/components/ManageProjectThreads";
+import { VisibilityField } from "@/components/VisibilityField";
 import {
   createProjectAction,
   type ProjectVisibility,
@@ -24,7 +25,7 @@ export function NewProjectDialog({
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [visibility, setVisibility] = useState<ProjectVisibility>("private");
+  const [visibility, setVisibility] = useState<ProjectVisibility>("public");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
 
@@ -33,7 +34,7 @@ export function NewProjectDialog({
   function close() {
     if (pending) return;
     setName("");
-    setVisibility("private");
+    setVisibility("public");
     setSelected(new Set());
     onClose();
   }
@@ -65,7 +66,7 @@ export function NewProjectDialog({
       }
       toast.success("Project created");
       setName("");
-      setVisibility("private");
+      setVisibility("public");
       setSelected(new Set());
       onClose();
       router.push(`/projects/${result.id}`);
@@ -112,48 +113,13 @@ export function NewProjectDialog({
             className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-accent"
           />
 
-          <p className="mt-5 text-sm font-medium text-foreground">Visibility</p>
-          <div className="mt-2 space-y-2">
-            {(
-              [
-                {
-                  value: "private" as const,
-                  label: "Private",
-                  description: "Only you can see this project.",
-                },
-                {
-                  value: "public" as const,
-                  label: "Public",
-                  description: "Everyone in this org can see it.",
-                },
-              ] as const
-            ).map((option) => (
-              <label
-                key={option.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition ${
-                  visibility === option.value
-                    ? "border-foreground/25 bg-background"
-                    : "border-border hover:bg-background"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="new-project-visibility"
-                  value={option.value}
-                  checked={visibility === option.value}
-                  onChange={() => setVisibility(option.value)}
-                  className="mt-1 h-3.5 w-3.5 shrink-0 accent-accent"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-foreground">
-                    {option.label}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] leading-snug text-muted">
-                    {option.description}
-                  </span>
-                </span>
-              </label>
-            ))}
+          <div className="mt-5">
+            <VisibilityField
+              value={visibility}
+              onChange={setVisibility}
+              disabled={pending}
+              name="new-project-visibility"
+            />
           </div>
 
           <p className="mt-5 text-sm font-medium text-foreground">

@@ -88,7 +88,7 @@ export const projects = pgTable("project", {
   ownerUserId: text("owner_user_id").notNull(),
   visibility: text("visibility", { enum: ["public", "private"] })
     .notNull()
-    .default("private"),
+    .default("public"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

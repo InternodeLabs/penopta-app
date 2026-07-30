@@ -207,16 +207,11 @@ export default async function ProjectDetailPage({
         </p>
 
         <section>
-          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Visibility
-          </p>
-          <div className="mt-3">
-            <ProjectVisibilityControl
-              projectId={project.id}
-              visibility={project.visibility}
-              canEdit={isOwner}
-            />
-          </div>
+          <ProjectVisibilityControl
+            projectId={project.id}
+            visibility={project.visibility}
+            canEdit={isOwner}
+          />
         </section>
 
         <section>
