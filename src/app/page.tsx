@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import { SignInCard } from "@/components/SignInCard";
 import { WorkspaceEmpty } from "@/components/WorkspaceEmpty";
 import { getSession } from "@/lib/auth/server";
@@ -45,11 +43,6 @@ export default async function HomePage({
     listAgentThreads(activeOrg.id),
     listVisibleProjects({ orgId: activeOrg.id, viewerUserId: session.user.id }),
   ]);
-
-  if (projects[0]) {
-    redirect(`/projects/${projects[0].id}`);
-  }
-
   const ownerNames = await resolveThreadOwnerNames(threads, session);
 
   return (
