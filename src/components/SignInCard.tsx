@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
 
 import { loginStartHref } from "@/lib/auth/urls";
 
@@ -29,6 +27,17 @@ function GoogleMark() {
   );
 }
 
+function MicrosoftMark() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5">
+      <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
+      <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
+      <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
+      <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
+    </svg>
+  );
+}
+
 /**
  * Logged-out home. Visual match for the Penopta sign-in mockup; all Continue
  * actions hand off to Internode via `/authenticating` (no local IdP).
@@ -40,13 +49,7 @@ export function SignInCard({
   returnTo?: string;
   errorMessage?: string | null;
 }) {
-  const router = useRouter();
   const href = loginStartHref(returnTo);
-
-  function startSignIn(event?: FormEvent) {
-    event?.preventDefault();
-    router.push(href);
-  }
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
@@ -71,75 +74,29 @@ export function SignInCard({
           </p>
         ) : null}
 
-        <Link
-          href={href}
-          prefetch={false}
-          className="mt-6 flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
-        >
-          <GoogleMark />
-          Continue with Google
-        </Link>
+        <p className="mt-2 text-center text-sm text-muted">
+          Continue to register or sign in.
+        </p>
 
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center" aria-hidden>
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-surface px-3 text-muted">or</span>
-          </div>
-        </div>
-
-        <form onSubmit={startSignIn} className="space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-1.5 block text-sm font-medium text-foreground"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted/80 focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-foreground"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••••••"
-              className="h-11 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted/80 focus:border-foreground/30 focus:ring-2 focus:ring-foreground/10"
-            />
-          </div>
-          <button
-            type="submit"
-            className="flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-accent-foreground transition hover:opacity-90"
-          >
-            Continue
-          </button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-muted">
-          Don&apos;t have an account?{" "}
+        <div className="mt-6 space-y-3">
           <Link
             href={href}
             prefetch={false}
-            className="font-semibold text-foreground transition hover:opacity-80"
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
           >
-            Sign up
+            <GoogleMark />
+            Continue with Google
           </Link>
-        </p>
+
+          <Link
+            href={href}
+            prefetch={false}
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
+          >
+            <MicrosoftMark />
+            Continue with Microsoft
+          </Link>
+        </div>
       </div>
     </main>
   );
