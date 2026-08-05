@@ -27,7 +27,10 @@ export const threadPayloadSchema = z.object({
   status: z.string().min(1),
   createdAt: isoDateTimeOrNull,
   updatedAt: isoDateTimeOrNull,
-  projectContext: z.union([z.string(), z.null()]),
+  /** Preferred: name of the provider project this thread belongs to. */
+  projectName: z.string().min(1).optional(),
+  /** Legacy alias for projectName; still accepted from older skill payloads. */
+  projectContext: z.union([z.string(), z.null()]).optional(),
   sourceActivity: z.array(sourceActivitySchema),
   workingState: workingStateSchema,
 });

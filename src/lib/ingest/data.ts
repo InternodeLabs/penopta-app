@@ -22,19 +22,37 @@ function parseOptionalDate(value: string | null): Date | null {
 }
 
 /**
- * Titles that start with `PRIVATE:` (case-insensitive, optional leading
- * whitespace) are intentionally out of scope. Match the title prefix only —
- * the marker in message text or mid-title does not count.
+ * Legacy: thread titles that start with `PRIVATE:` (case-insensitive,
+ * optional leading whitespace) are intentionally out of scope.
  */
 export function isPrivateThreadTitle(title: string): boolean {
   return /^\s*private:/i.test(title);
 }
 
 /**
+ * Project names that start with `P:` or `Private:` (case-insensitive,
+ * optional leading whitespace) are intentionally out of scope. Match the
+ * project-name prefix only — the marker mid-name does not count.
+ */
+export function isPrivateProjectName(name: string): boolean {
+  return /^\s*(?:p|private):/i.test(name);
+}
+
+/** Resolve the project name from either the new or legacy payload field. */
+export function resolveThreadProjectName(thread: {
+  projectName?: string;
+  projectContext?: string | null;
+}): string | null {
+  const name = thread.projectName?.trim() || thread.projectContext?.trim();
+  return name || null;
+}
+
+/**
  * Persist a validated sync payload for `ownerUserId`.
  * Inserts an immutable run row, upserts current thread state, and stores
- * per-thread snapshots for history. Threads whose titles start with
- * `PRIVATE:` are dropped before write (server-side guard matching the skill).
+ * per-thread snapshots for history. Threads under private projects (`P:` /
+ * `Private:`) or with legacy `PRIVATE:` titles are dropped before write
+ * (server-side guard matching the skill).
  */
 export async function ingestAgentSync(
   ownerUserId: string,
@@ -55,9 +73,12 @@ export async function ingestAgentSync(
   if (existing[0]) throw new DuplicateRunError(existing[0]);
 
   const syncedAt = new Date();
-  const threads = payload.threads.filter(
-    (thread) => !isPrivateThreadTitle(thread.title),
-  );
+  const threads = payload.threads.filter((thread) => {
+    if (isPrivateThreadTitle(thread.title)) return false;
+    const projectName = resolveThreadProjectName(thread);
+    if (projectName && isPrivateProjectName(projectName)) return false;
+    return true;
+  });
 
   const inserted = await db
     .insert(agentSyncRuns)
@@ -81,6 +102,7 @@ export async function ingestAgentSync(
   if (!run) throw new Error("Failed to insert agent sync run");
 
   for (const thread of threads) {
+    const projectContext = resolveThreadProjectName(thread);
     const threadValues = {
       orgId,
       ownerUserId,
@@ -90,7 +112,7 @@ export async function ingestAgentSync(
       status: thread.status,
       threadCreatedAt: parseOptionalDate(thread.createdAt),
       threadUpdatedAt: parseOptionalDate(thread.updatedAt),
-      projectContext: thread.projectContext,
+      projectContext,
       sourceActivity: thread.sourceActivity,
       workingState: thread.workingState,
       lastAgentName: payload.agent.name,
@@ -137,7 +159,7 @@ export async function ingestAgentSync(
       status: thread.status,
       threadCreatedAt: parseOptionalDate(thread.createdAt),
       threadUpdatedAt: parseOptionalDate(thread.updatedAt),
-      projectContext: thread.projectContext,
+      projectContext,
       sourceActivity: thread.sourceActivity,
       workingState: thread.workingState,
       agentName: payload.agent.name,
