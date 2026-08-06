@@ -1,6 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
+import {
+  listKnownProviderProjects,
+  listTrackedProviderProjects,
+  makeProviderProjectsAvailable,
+} from "@/lib/integrations/provider-projects-data";
+import { PROVIDER_PROJECT_PROVIDERS } from "@/lib/integrations/provider-projects";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 import { DuplicateRunError, ingestAgentSync } from "@/lib/ingest/data";
 import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
@@ -12,6 +18,8 @@ import {
   mcpSearchThreads,
 } from "@/lib/mcp/data";
 import { markTokenVerified } from "@/lib/oauth/tokens";
+
+const providerSchema = z.enum(PROVIDER_PROJECT_PROVIDERS);
 
 /** A tool result carrying JSON that the model can parse. */
 function jsonResult(value: unknown) {
@@ -171,6 +179,101 @@ export function buildPenoptaMcpServer(
   );
 
   server.registerTool(
+    "known_projects",
+    {
+      title: "Known provider projects",
+      description:
+        "List provider projects Penopta already has in its available catalog " +
+        "for chatgpt or claude. Call this during sync discovery, then push only " +
+        "unknown projects via make_projects_available. Returns metadata only " +
+        "(projectId, name, createdAt, tracked, private) — no transcripts.",
+      inputSchema: z.object({
+        provider: providerSchema.describe(
+          'Which provider catalog to read: "chatgpt" or "claude".',
+        ),
+      }),
+    },
+    async ({ provider }) =>
+      jsonResult({
+        provider,
+        projects: await listKnownProviderProjects(owner.orgId, provider),
+      }),
+  );
+
+  server.registerTool(
+    "make_projects_available",
+    {
+      title: "Make provider projects available",
+      description:
+        "Register unknown provider projects in Penopta's available catalog. " +
+        "Send metadata only: projectId (stable provider id), name, and optional " +
+        "createdAt. Do not send transcripts. Upserts by projectId; does not " +
+        "change tracking. Private-prefixed names (p: / private:) stay available " +
+        "but cannot be tracked.",
+      inputSchema: z.object({
+        provider: providerSchema.describe(
+          'Which provider these projects come from: "chatgpt" or "claude".',
+        ),
+        projects: z
+          .array(
+            z.object({
+              projectId: z
+                .string()
+                .min(1)
+                .describe(
+                  "Stable provider project id used later to list threads in the project.",
+                ),
+              name: z.string().min(1).describe("Display name of the project."),
+              createdAt: z
+                .string()
+                .nullable()
+                .optional()
+                .describe("ISO-8601 created time if known, otherwise omit/null."),
+            }),
+          )
+          .min(1)
+          .describe("Unknown projects to add or refresh in the catalog."),
+      }),
+    },
+    async ({ provider, projects }) => {
+      const result = await makeProviderProjectsAvailable(
+        owner.ownerUserId,
+        owner.orgId,
+        provider,
+        projects,
+      );
+      return jsonResult({
+        ok: true,
+        provider,
+        inserted: result.inserted,
+        updated: result.updated,
+        projects: result.projects,
+      });
+    },
+  );
+
+  server.registerTool(
+    "tracked_projects",
+    {
+      title: "Tracked provider projects",
+      description:
+        "Return the provider projects the user opted to track for transcript " +
+        "sync. Sync only threads that belong to these projects. Private-prefixed " +
+        "projects are never included.",
+      inputSchema: z.object({
+        provider: providerSchema.describe(
+          'Which provider catalog to read: "chatgpt" or "claude".',
+        ),
+      }),
+    },
+    async ({ provider }) =>
+      jsonResult({
+        provider,
+        projects: await listTrackedProviderProjects(owner.orgId, provider),
+      }),
+  );
+
+  server.registerTool(
     "sync_threads",
     {
       title: "Sync threads",
@@ -180,7 +283,8 @@ export function buildPenoptaMcpServer(
         "authenticated connection, so no API key or bearer token is needed and " +
         "none should be included in the payload. Send the same JSON described in " +
         "the sync skill (schemaVersion, runId, window, agent, captureCoverage, " +
-        "threads, runSummary). Runs are idempotent by runId. On success it " +
+        "threads, runSummary). Only include threads from projects returned by " +
+        "tracked_projects. Runs are idempotent by runId. On success it " +
         "returns { ok: true, checkpoint }; save the checkpoint before the next " +
         "run and treat any error result as a failed delivery.",
       inputSchema: agentSyncPayloadSchema,

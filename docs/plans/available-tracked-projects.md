@@ -74,8 +74,8 @@ Exact table/column names left to implementation; uniqueness should be `(org_id, 
 
 ## Acceptance checks
 
-- [ ] Skill can register unknown projects without reading transcripts.
-- [ ] `tracked_projects` returns only user-opted non-private projects.
-- [ ] Hourly sync only includes threads from tracked projects.
-- [ ] Integrations page lists available projects, marks tracked, disables `p:` / `private:` names.
-- [ ] Toggling track updates what the next skill run syncs.
+- [x] Skill can register unknown projects without reading transcripts.
+- [x] `tracked_projects` returns only user-opted non-private projects.
+- [x] Hourly sync only includes threads from tracked projects.
+- [x] Integrations page lists available projects, marks tracked, disables `p:` / `private:` names.
+- [x] Toggling track updates what the next skill run syncs.

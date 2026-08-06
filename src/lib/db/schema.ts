@@ -318,6 +318,52 @@ export const projectThreads = pgTable(
 export type ProjectThreadRow = typeof projectThreads.$inferSelect;
 
 /**
+ * Catalog of ChatGPT/Claude projects discovered by the sync skill (metadata
+ * only — no transcripts). Users opt individual rows into tracking via the
+ * integrations UI; the skill then syncs threads only for tracked projects.
+ * Distinct from Penopta's own `project` table.
+ */
+export const availableProviderProjects = pgTable(
+  "available_provider_project",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Portal user who last registered/updated this catalog row. */
+    ownerUserId: text("owner_user_id").notNull(),
+    provider: text("provider", { enum: ["chatgpt", "claude"] }).notNull(),
+    /** Stable id from the provider, used to find the project again later. */
+    externalProjectId: text("external_project_id").notNull(),
+    name: text("name").notNull(),
+    /** When the provider project was created, if known. */
+    projectCreatedAt: timestamp("project_created_at", { withTimezone: true }),
+    /** User opted this project into transcript sync. */
+    tracked: boolean("tracked").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("available_provider_project_org_provider_ext_uidx").on(
+      t.orgId,
+      t.provider,
+      t.externalProjectId,
+    ),
+    index("available_provider_project_org_provider_idx").on(
+      t.orgId,
+      t.provider,
+    ),
+  ],
+);
+
+export type AvailableProviderProjectRow =
+  typeof availableProviderProjects.$inferSelect;
+
+/**
  * OAuth 2.1 client registered with Penopta's MCP authorization server. Clients
  * are created via Dynamic Client Registration (RFC 7591) or seeded from a Client
  * ID Metadata Document (CIMD) URL. All clients are public (PKCE, no secret);

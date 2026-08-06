@@ -3,10 +3,13 @@ import { CheckCircle2, ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AvailableProjectsPanel } from "@/components/AvailableProjectsPanel";
 import { CopyField } from "@/components/CopyField";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
+import { asProviderProjectProvider } from "@/lib/integrations/provider-projects";
+import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
 import {
   getIntegrationProvider,
   getPublicAppUrl,
@@ -17,6 +20,7 @@ import {
 } from "@/lib/integrations/providers";
 import { readSyncSkill } from "@/lib/integrations/skill";
 import { getLatestMcpVerification } from "@/lib/oauth/tokens";
+import { resolveActiveOrg } from "@/lib/orgs/data";
 
 /** Render step copy with `**bold**` and `__underline__`. */
 function renderStepText(step: string) {
@@ -55,6 +59,12 @@ export default async function IntegrationSetupPage({
   const providers = listIntegrationProviders();
   const provider = getIntegrationProvider(providerId);
   if (!provider) notFound();
+
+  const { activeOrg } = await resolveActiveOrg(session.user.id);
+  const availableProjects = await listAvailableProviderProjects(
+    activeOrg.id,
+    asProviderProjectProvider(provider.id),
+  );
 
   const ProviderIcon = provider.icon;
   const mcpVerification = await getLatestMcpVerification(session.user.id);
@@ -191,6 +201,11 @@ export default async function IntegrationSetupPage({
           </section>
         ) : (
           <>
+        <AvailableProjectsPanel
+          providerId={provider.id}
+          projects={availableProjects}
+        />
+
         <section className="mt-8 max-w-2xl">
           <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
             Sync your conversations to Penopta automatically
