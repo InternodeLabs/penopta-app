@@ -20,16 +20,16 @@ Set `provider` to `"chatgpt"` or `"claude"` to match the environment you are run
 
 ### 1. Discover — register available projects (metadata only)
 
-1. List every project available in the current provider environment (name, stable project id, created time if known).
+1. List every project available in the current provider environment (name, stable project id, created time if known). **Exclude** any project whose name starts with `P:` or `Private:` (case-insensitive) — do not send them to Penopta at all.
 2. Call Penopta MCP `known_projects({ provider })`.
-3. Diff: any local project whose stable id is **not** in the known list is unknown.
+3. Diff: any local **non-private** project whose stable id is **not** in the known list is unknown.
 4. If there are unknowns, call `make_projects_available({ provider, projects: [...] })` with **metadata only** for each unknown:
    - `projectId` — stable provider project id (required later to list threads in that project)
    - `name` — display name
    - `createdAt` — ISO-8601 if known, otherwise omit/null
 5. Do **not** read transcripts or chat contents during discovery. Catalog updates are metadata only.
 
-Include private-prefixed projects in discovery so Penopta can show them as available-but-disabled. Still never sync their contents.
+Never register private-prefixed projects in the catalog. Penopta also rejects/deletes them if submitted.
 
 ### 2. Choose — load the track allowlist
 
@@ -56,13 +56,15 @@ For each project returned by `tracked_projects`:
 
 Exclude this scheduled task’s own messages and reports from ingestion, so it does not recursively capture itself.
 
-## Private projects — never sync
+## Private projects — never catalog, never sync
 
-Skip any **project** whose **name** begins with `P:` or `Private:` (case-insensitive). For example, "P: personal notes", "Private: doctor questions", and "PRIVATE: experiment drugs" must never have their chats/tasks read or included in `threads`.
+Skip any **project** whose **name** begins with `P:` or `Private:` (case-insensitive). For example, "P: personal notes", "Private: doctor questions", and "PRIVATE: experiment drugs" must never be registered via `make_projects_available`, never tracked, and never have their chats/tasks read or included in `threads`.
 
-Match on the project-name **prefix only**. Only skip when the project name *starts with* `P:` or `Private:` — a name that merely mentions "private" or a lone "P" elsewhere (e.g. "Make this repo private", "Apollo") is not excluded.
+Also skip any **thread/chat** whose **title** begins with `P:` or `Private:` (case-insensitive), even inside an otherwise eligible project.
 
-These projects may still be registered as **available** (for the Penopta UI). They are never trackable and must not appear in effective sync work even if somehow listed. Treat them as out of scope for content rather than unavailable: do not count their threads in `threadsUnavailable` or flag them in `captureCoverage.limitation`.
+Match on the **prefix only**. Only skip when the name/title *starts with* `P:` or `Private:` — a name that merely mentions "private" or a lone "P" elsewhere (e.g. "Make this repo private", "Apollo") is not excluded.
+
+Treat these as out of scope rather than unavailable: do not count them in `threadsUnavailable` or flag them in `captureCoverage.limitation`. Do not send their metadata to Penopta.
 
 ## Gather source material
 
@@ -180,9 +182,9 @@ You must actually deliver the payload. Collecting context without delivering it 
 ## Safety and quality rules
 
 - Discover projects with metadata only via `known_projects` / `make_projects_available`; never attach transcripts to catalog updates.
+- Never register or sync a project or thread whose name/title starts with `P:` or `Private:` (case-insensitive); exclude them entirely, matching on the prefix only. Do not send their metadata.
 - Sync transcripts only for projects returned by `tracked_projects`.
 - Only sync chats/tasks that belong to a project; skip standalone threads with no project.
-- Never sync a project whose name starts with `P:` or `Private:` (case-insensitive); exclude it and all of its threads from content sync, matching on the project-name prefix only.
 - Never invent transcript content, a thread, a checkpoint, tracked membership, or delivery success.
 - Never include private reasoning, credentials, tokens, or hidden tool output in the payload or transcripts.
 - Do not modify source chats/tasks.

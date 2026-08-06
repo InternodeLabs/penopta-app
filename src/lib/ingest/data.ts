@@ -22,11 +22,11 @@ function parseOptionalDate(value: string | null): Date | null {
 }
 
 /**
- * Legacy: thread titles that start with `PRIVATE:` (case-insensitive,
- * optional leading whitespace) are intentionally out of scope.
+ * Legacy + current: thread titles that start with `P:` or `Private:`
+ * (case-insensitive, optional leading whitespace) are intentionally out of scope.
  */
 export function isPrivateThreadTitle(title: string): boolean {
-  return /^\s*private:/i.test(title);
+  return /^\s*(?:p|private):/i.test(title);
 }
 
 /**

@@ -1,7 +1,6 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -9,7 +8,7 @@ import { toast } from "sonner";
 import { setProviderProjectTrackedAction } from "@/lib/integrations/actions";
 import type { AvailableProviderProject } from "@/lib/integrations/provider-projects-data";
 
-/** List available provider projects with track toggles (private rows disabled). */
+/** List available provider projects with track toggles. */
 export function AvailableProjectsPanel({
   providerId,
   projects,
@@ -42,12 +41,13 @@ export function AvailableProjectsPanel({
         Available projects
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        The hourly sync discovers projects from {providerId === "chatgpt" ? "ChatGPT" : "Claude"}
-        and lists them here. Turn tracking on for projects you want Penopta to
-        pull transcripts from. Names starting with{" "}
+        The hourly sync discovers projects from{" "}
+        {providerId === "chatgpt" ? "ChatGPT" : "Claude"} and lists them here.
+        Turn tracking on for projects you want Penopta to pull transcripts from.
+        Projects named with a{" "}
         <span className="font-medium text-foreground">P:</span> or{" "}
-        <span className="font-medium text-foreground">Private:</span> stay listed
-        but cannot be tracked.
+        <span className="font-medium text-foreground">Private:</span> prefix are
+        never imported.
       </p>
 
       {projects.length === 0 ? (
@@ -57,54 +57,42 @@ export function AvailableProjectsPanel({
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-zinc-100 border border-zinc-200 rounded-md">
-          {projects.map((project) => {
-            const disabled = project.private || pending;
-            return (
-              <li
-                key={project.id}
-                className={`flex items-center gap-3 px-4 py-3 ${
-                  project.private ? "bg-zinc-50/80 text-muted" : ""
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {project.name}
-                    </p>
-                    {project.private ? (
-                      <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted">
-                        <Lock className="size-3" aria-hidden />
-                        Private
-                      </span>
-                    ) : project.tracked ? (
-                      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
-                        Tracked
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted">
-                    {project.createdAt
-                      ? `Created ${formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}`
-                      : "Created time unknown"}
-                    <span className="text-zinc-300"> · </span>
-                    <span className="font-mono">{project.projectId}</span>
+          {projects.map((project) => (
+            <li
+              key={project.id}
+              className="flex items-center gap-3 px-4 py-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {project.name}
                   </p>
+                  {project.tracked ? (
+                    <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                      Tracked
+                    </span>
+                  ) : null}
                 </div>
-                <label className="flex shrink-0 items-center gap-2 text-sm">
-                  <span className="sr-only">
-                    Track {project.name}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-zinc-300 text-foreground accent-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
-                    checked={project.tracked}
-                    disabled={disabled}
-                    onChange={(e) => setTracked(project.id, e.target.checked)}
-                  />
-                </label>
-              </li>
-            );
-          })}
+                <p className="mt-0.5 truncate text-xs text-muted">
+                  {project.createdAt
+                    ? `Created ${formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}`
+                    : "Created time unknown"}
+                  <span className="text-zinc-300"> · </span>
+                  <span className="font-mono">{project.projectId}</span>
+                </p>
+              </div>
+              <label className="flex shrink-0 items-center gap-2 text-sm">
+                <span className="sr-only">Track {project.name}</span>
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-zinc-300 text-foreground accent-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  checked={project.tracked}
+                  disabled={pending}
+                  onChange={(e) => setTracked(project.id, e.target.checked)}
+                />
+              </label>
+            </li>
+          ))}
         </ul>
       )}
     </section>

@@ -99,7 +99,7 @@ export function mcpConnectorUrl(appUrl: string = getPublicAppUrl()): string {
  */
 export function syncRoutineInstructions(skillBody: string): string {
   return [
-    "Follow the Penopta sync skill below: discover my provider projects into Penopta (metadata only via known_projects / make_projects_available), then sync transcripts only for projects returned by tracked_projects, and deliver with sync_threads. Skip standalone chats and never sync projects whose names start with P: or Private:. Your identity and target org come from the authenticated Penopta connector, so there is no key, token, or endpoint to configure — leave all credential fields out.",
+    "Follow the Penopta sync skill below: discover my provider projects into Penopta (metadata only via known_projects / make_projects_available), then sync transcripts only for projects returned by tracked_projects, and deliver with sync_threads. Skip standalone chats. Never register or sync projects/threads whose names start with P: or Private:. Your identity and target org come from the authenticated Penopta connector, so there is no key, token, or endpoint to configure — leave all credential fields out.",
     "",
     "----- BEGIN PENOPTA SYNC SKILL -----",
     "",

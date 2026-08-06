@@ -7,7 +7,7 @@ Split agent sync into **discover → choose → sync**. Today the skill syncs ev
 1. Skill discovers provider projects and registers unknown ones in Penopta as **available** (metadata only).
 2. User chooses which available projects to **track** in the app UI.
 3. Skill syncs thread transcripts only for **tracked** projects.
-4. Private-prefixed projects appear in the catalog but cannot be tracked or synced.
+4. Private-prefixed projects are never imported (no metadata, no transcripts).
 
 Out of scope for this pass: per-thread tracking (future MCP tool `penopta_track_thread`).
 
@@ -17,7 +17,7 @@ Out of scope for this pass: per-thread tracking (future MCP tool `penopta_track_
 |--------|---------|
 | **Available project** | Metadata catalog entry from ChatGPT/Claude: name, stable provider project id, created. No transcripts. |
 | **Tracked project** | User-selected subset of available (non-private) projects. |
-| **Private project** | Name starts with `p:` or `private:` (case-insensitive). Shown in UI as disabled; never trackable/syncable. |
+| **Private project** | Name starts with `p:` or `private:` (case-insensitive). Never cataloged, tracked, or synced. Server rejects/deletes if submitted. |
 
 Tracking is **project-level**. Sync still pulls all member threads inside each tracked project. The stable provider project id must be enough for the skill to later say “get all activity from threads in this project.”
 
@@ -57,8 +57,8 @@ On `/integrations/[provider]`, add a section that:
 
 - Lists all **available** projects for the active org (scoped like other owned data).
 - Annotates which are **tracked**.
-- Shows private-prefixed projects but **disables** interaction (no toggle).
-- Lets the user toggle tracking on/off for non-private available projects.
+- Lets the user toggle tracking on/off.
+- Private-prefixed projects never appear (skill + server skip/delete them).
 
 ## Data model (implementation notes)
 
@@ -77,5 +77,6 @@ Exact table/column names left to implementation; uniqueness should be `(org_id, 
 - [x] Skill can register unknown projects without reading transcripts.
 - [x] `tracked_projects` returns only user-opted non-private projects.
 - [x] Hourly sync only includes threads from tracked projects.
-- [x] Integrations page lists available projects, marks tracked, disables `p:` / `private:` names.
+- [x] Integrations page lists available projects and marks tracked.
 - [x] Toggling track updates what the next skill run syncs.
+- [x] `P:` / `Private:` projects are never stored in the catalog or as threads.

@@ -1,4 +1,5 @@
 import type { IntegrationProviderId } from "@/lib/integrations/providers";
+import { isPrivateProjectName } from "@/lib/ingest/data";
 
 /** Providers that can discover projects into the available catalog. */
 export const PROVIDER_PROJECT_PROVIDERS = ["chatgpt", "claude"] as const;
@@ -11,13 +12,9 @@ export function isProviderProjectProvider(
   return (PROVIDER_PROJECT_PROVIDERS as readonly string[]).includes(value);
 }
 
-/**
- * Private projects are intentionally out of sync scope. Match on name prefix
- * only (`p:` or `private:`, case-insensitive) — same rule as the sync skill.
- */
+/** Same rule as ingest / sync skill — never catalog or sync these. */
 export function isPrivateProviderProjectName(name: string): boolean {
-  const n = name.trim().toLowerCase();
-  return n.startsWith("p:") || n.startsWith("private:");
+  return isPrivateProjectName(name);
 }
 
 /** Narrow IntegrationProviderId to catalog providers (they are the same set). */

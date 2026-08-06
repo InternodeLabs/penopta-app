@@ -1,14 +1,12 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
   availableProviderProjects,
   type AvailableProviderProjectRow,
 } from "@/lib/db/schema";
-import {
-  isPrivateProviderProjectName,
-  type ProviderProjectProvider,
-} from "@/lib/integrations/provider-projects";
+import { isPrivateProjectName } from "@/lib/ingest/data";
+import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
 
 export type AvailableProviderProject = {
   id: string;
@@ -17,20 +15,32 @@ export type AvailableProviderProject = {
   name: string;
   createdAt: string | null;
   tracked: boolean;
-  private: boolean;
 };
 
 function toPublic(row: AvailableProviderProjectRow): AvailableProviderProject {
-  const isPrivate = isPrivateProviderProjectName(row.name);
   return {
     id: row.id,
     provider: row.provider,
     projectId: row.externalProjectId,
     name: row.name,
     createdAt: row.projectCreatedAt?.toISOString() ?? null,
-    tracked: row.tracked && !isPrivate,
-    private: isPrivate,
+    tracked: row.tracked,
   };
+}
+
+/** Drop any catalog rows whose names are private-prefixed (safety cleanup). */
+async function deletePrivateCatalogRows(
+  rows: AvailableProviderProjectRow[],
+): Promise<AvailableProviderProjectRow[]> {
+  const privateIds = rows
+    .filter((r) => isPrivateProjectName(r.name))
+    .map((r) => r.id);
+  if (privateIds.length > 0) {
+    await db
+      .delete(availableProviderProjects)
+      .where(inArray(availableProviderProjects.id, privateIds));
+  }
+  return rows.filter((r) => !isPrivateProjectName(r.name));
 }
 
 /** List available provider projects for an org, optionally filtered by provider. */
@@ -51,7 +61,8 @@ export async function listAvailableProviderProjects(
     )
     .orderBy(asc(availableProviderProjects.name));
 
-  return rows.map(toPublic);
+  const kept = await deletePrivateCatalogRows(rows);
+  return kept.map(toPublic);
 }
 
 /** Projects Penopta already knows about for a provider (MCP `known_projects`). */
@@ -63,14 +74,15 @@ export async function listKnownProviderProjects(
 }
 
 /**
- * Tracked, non-private projects the skill should sync (MCP `tracked_projects`).
+ * Tracked projects the skill should sync (MCP `tracked_projects`).
+ * Private-prefixed names are never returned (and are deleted if found).
  */
 export async function listTrackedProviderProjects(
   orgId: string,
   provider: ProviderProjectProvider,
 ): Promise<AvailableProviderProject[]> {
   const all = await listAvailableProviderProjects(orgId, provider);
-  return all.filter((p) => p.tracked && !p.private);
+  return all.filter((p) => p.tracked);
 }
 
 export type MakeAvailableInput = {
@@ -81,28 +93,29 @@ export type MakeAvailableInput = {
 
 /**
  * Upsert provider project metadata into the available catalog. Never changes
- * `tracked`. If a renamed project becomes private while tracked, clear tracking.
+ * `tracked`. Skips (and deletes any existing) private-prefixed names — those
+ * must never be stored.
  */
 export async function makeProviderProjectsAvailable(
   ownerUserId: string,
   orgId: string,
   provider: ProviderProjectProvider,
   projects: MakeAvailableInput[],
-): Promise<{ inserted: number; updated: number; projects: AvailableProviderProject[] }> {
+): Promise<{
+  inserted: number;
+  updated: number;
+  skippedPrivate: number;
+  projects: AvailableProviderProject[];
+}> {
   let inserted = 0;
   let updated = 0;
+  let skippedPrivate = 0;
   const results: AvailableProviderProject[] = [];
 
   for (const item of projects) {
     const projectId = item.projectId.trim();
     const name = item.name.trim();
     if (!projectId || !name) continue;
-
-    let projectCreatedAt: Date | null = null;
-    if (item.createdAt) {
-      const parsed = new Date(item.createdAt);
-      if (!Number.isNaN(parsed.getTime())) projectCreatedAt = parsed;
-    }
 
     const existing = await db
       .select()
@@ -116,10 +129,35 @@ export async function makeProviderProjectsAvailable(
       )
       .limit(1);
 
+    // Never store private-prefixed projects; remove if already present.
+    if (isPrivateProjectName(name)) {
+      skippedPrivate += 1;
+      if (existing[0]) {
+        await db
+          .delete(availableProviderProjects)
+          .where(eq(availableProviderProjects.id, existing[0].id));
+      }
+      continue;
+    }
+
+    let projectCreatedAt: Date | null = null;
+    if (item.createdAt) {
+      const parsed = new Date(item.createdAt);
+      if (!Number.isNaN(parsed.getTime())) projectCreatedAt = parsed;
+    }
+
     const now = new Date();
-    const becomesPrivate = isPrivateProviderProjectName(name);
 
     if (existing[0]) {
+      // Existing row became private under a prior name — also drop it.
+      if (isPrivateProjectName(existing[0].name)) {
+        skippedPrivate += 1;
+        await db
+          .delete(availableProviderProjects)
+          .where(eq(availableProviderProjects.id, existing[0].id));
+        continue;
+      }
+
       const [row] = await db
         .update(availableProviderProjects)
         .set({
@@ -127,8 +165,6 @@ export async function makeProviderProjectsAvailable(
           projectCreatedAt:
             projectCreatedAt ?? existing[0].projectCreatedAt ?? null,
           ownerUserId,
-          // Private projects cannot stay tracked.
-          tracked: becomesPrivate ? false : existing[0].tracked,
           updatedAt: now,
         })
         .where(eq(availableProviderProjects.id, existing[0].id))
@@ -154,12 +190,12 @@ export async function makeProviderProjectsAvailable(
     }
   }
 
-  return { inserted, updated, projects: results };
+  return { inserted, updated, skippedPrivate, projects: results };
 }
 
 /**
  * Set tracked for a catalog row in the active org. Private names cannot be
- * tracked.
+ * tracked and are deleted if found.
  */
 export async function setProviderProjectTracked(
   orgId: string,
@@ -181,10 +217,13 @@ export async function setProviderProjectTracked(
     .limit(1);
 
   if (!row) return { ok: false, error: "Project not found." };
-  if (tracked && isPrivateProviderProjectName(row.name)) {
+  if (isPrivateProjectName(row.name)) {
+    await db
+      .delete(availableProviderProjects)
+      .where(eq(availableProviderProjects.id, id));
     return {
       ok: false,
-      error: "Private projects (names starting with P: or Private:) cannot be tracked.",
+      error: "Private projects (names starting with P: or Private:) are not stored.",
     };
   }
 

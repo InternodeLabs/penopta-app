@@ -208,8 +208,8 @@ export function buildPenoptaMcpServer(
         "Register unknown provider projects in Penopta's available catalog. " +
         "Send metadata only: projectId (stable provider id), name, and optional " +
         "createdAt. Do not send transcripts. Upserts by projectId; does not " +
-        "change tracking. Private-prefixed names (p: / private:) stay available " +
-        "but cannot be tracked.",
+        "change tracking. Never include projects whose names start with p: or " +
+        "private: (case-insensitive) — those are skipped and not stored.",
       inputSchema: z.object({
         provider: providerSchema.describe(
           'Which provider these projects come from: "chatgpt" or "claude".',
@@ -247,6 +247,7 @@ export function buildPenoptaMcpServer(
         provider,
         inserted: result.inserted,
         updated: result.updated,
+        skippedPrivate: result.skippedPrivate,
         projects: result.projects,
       });
     },
@@ -259,7 +260,7 @@ export function buildPenoptaMcpServer(
       description:
         "Return the provider projects the user opted to track for transcript " +
         "sync. Sync only threads that belong to these projects. Private-prefixed " +
-        "projects are never included.",
+        "projects are never included or stored.",
       inputSchema: z.object({
         provider: providerSchema.describe(
           'Which provider catalog to read: "chatgpt" or "claude".',
