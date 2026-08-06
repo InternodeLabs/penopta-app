@@ -3,7 +3,8 @@
  * Both Claude and ChatGPT use the same pasteable instructions (the sync skill
  * inlined; delivery happens through the authenticated Penopta MCP connector, so
  * there's no key or endpoint). Only the step-by-step setup copy differs: Claude
- * pastes them into a Routine; ChatGPT pastes them into a scheduled task.
+ * (desktop app) pastes them into a Scheduled task; ChatGPT pastes them
+ * into a scheduled task.
  */
 
 import type { ComponentType } from "react";
@@ -113,8 +114,7 @@ export function syncRoutineInstructions(skillBody: string): string {
  * The one-liner we ask users to send in provider chat so the connector calls
  * `verify_penopta`, which is what unlocks the sync setup on the setup page.
  */
-export const VERIFY_CHAT_COMMAND =
-  "Run verify_penopta tool";
+export const VERIFY_CHAT_COMMAND = "Run verify_penopta tool";
 
 /** Open Claude with the verify command prefilled. */
 export function claudeVerifyHref(): string {
@@ -126,14 +126,15 @@ export function chatgptVerifyHref(): string {
   return `https://chatgpt.com/?q=${encodeURIComponent(VERIFY_CHAT_COMMAND)}`;
 }
 
-/** Prefilled Claude chat that walks the user through Penopta routine setup. */
+/** Prefilled Claude chat that walks the user through Penopta scheduled-task setup. */
 export function claudeInstallHelpHref(): string {
   const prompt = [
-    "Walk me through setting up a Penopta sync routine in Claude.",
-    "I want to create a **Cloud** routine named \"Penopta Cloud Sync\" (choose Cloud, not Local, from New routine).",
-    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP connector — no key or endpoint) into the Instructions field, set the schedule to Hourly, and under Connectors leave **only** the Penopta connector selected (remove any others).",
-    "After creating it, I need to run the routine once and choose \"Always allow\" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.",
-    "Claude's UI may have changed — show me the current steps to create this cloud routine, run it once, and set those permissions, and point out where each setting lives.",
+    "Walk me through setting up a Penopta sync as a scheduled task in the Claude desktop app.",
+    "I must use the Claude client app — not only the browser. From Home, open Scheduled, click New task, and choose Set up manually.",
+    'I want to create a scheduled task named "Penopta Sync".',
+    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP connector — no key or endpoint) into the Instructions field, and set Frequency to Hourly.",
+    'After creating it, I need to run the scheduled task once and choose "Always allow" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.',
+    "Claude's UI may have changed — show me the current steps in the desktop app to open Home > Scheduled, create the task manually, run it once, and set those permissions, and point out where each setting lives.",
   ].join(" ");
 
   return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
@@ -145,7 +146,7 @@ export function chatgptInstallHelpHref(): string {
     "Walk me through setting up a Penopta sync as a ChatGPT scheduled task.",
     'I want to create a scheduled task named "Penopta Sync".',
     "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP server — no key or endpoint) into the task description, set Runs in to ChatGPT cloud, and set Frequency to Custom Hourly (every 1 hour).",
-    "After creating it, I need to run the scheduled task once and choose \"Always allow\" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.",
+    'After creating it, I need to run the scheduled task once and choose "Always allow" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.',
     "ChatGPT's UI may have changed — show me the current steps to open Scheduled tasks, create one manually, run it once, and point out where each setting lives.",
   ].join(" ");
 
@@ -156,7 +157,7 @@ export function chatgptInstallHelpHref(): string {
 export function claudeMcpHelpHref(): string {
   const prompt = [
     "Walk me through adding Penopta as a custom MCP connector in Claude.",
-    "I want to add a remote MCP server named \"Penopta\" and paste in its remote MCP server URL, then approve the Penopta sign-in (OAuth) prompt.",
+    'I want to add a remote MCP server named "Penopta" and paste in its remote MCP server URL, then approve the Penopta sign-in (OAuth) prompt.',
     "Claude's UI may have changed — show me the current steps to open Settings > Connectors, add a custom connector, and point out where each setting lives.",
   ].join(" ");
 
@@ -167,7 +168,7 @@ export function claudeMcpHelpHref(): string {
 export function chatgptMcpHelpHref(): string {
   const prompt = [
     "Walk me through adding Penopta as an MCP server in ChatGPT.",
-    "I want to add a Streamable HTTP MCP server named \"Penopta\" and paste in its MCP server URL, then approve the Penopta sign-in (OAuth) prompt.",
+    'I want to add a Streamable HTTP MCP server named "Penopta" and paste in its MCP server URL, then approve the Penopta sign-in (OAuth) prompt.',
     "ChatGPT's UI may have changed — show me the current steps to open Settings > Plugins > MCPs, add a server, and point out where each setting lives.",
   ].join(" ");
 
@@ -196,7 +197,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       icon: Anthropic,
       setupTitle: "Connect Claude",
       intro:
-        "Add Penopta as an MCP connector for live context in chat, and/or optionally set up an hourly sync routine.",
+        "Add Penopta as an MCP connector for live context in chat, and/or optionally set up an hourly scheduled sync in the Claude desktop app.",
       mcpSteps: [
         "In Claude, open **Settings** and select **Connectors** under Customize.",
         "Click **Add**, then choose **Add custom connector**.",
@@ -206,12 +207,13 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       ],
       steps: [
         "**Copy the Instructions** below — they contain the full sync skill. Delivery runs through the Penopta MCP connector you added above, so there's no key or token to paste.",
-        "In Claude, go to **Routines**, open **New routine**, and choose **Cloud**.",
-        'Name it **"Penopta Cloud Sync"**.',
-        "Paste the Instructions into the routine’s **Instructions** field.",
-        "Set the schedule to **Hourly**.",
-        "Under **Connectors**, leave **only** the Penopta connector selected — remove any others (e.g. Internode).",
-        "Create the routine, then **run it once** from the Routines list. When Penopta tools ask for permission, choose **Always allow** — hourly runs are unattended, and anything left on “Needs approval” will stop the sync from finishing.",
+        "Open the **Claude desktop app**. Scheduled tasks for this sync are set up there and are not available in the browser.",
+        "Go to **Home** tab, then choose **Scheduled**.",
+        "Click **New task**, then choose **Set up manually**.",
+        'Name it **"Penopta Sync"**. Add a short **Description** (e.g. “Hourly sync of Claude projects and conversations to Penopta”).',
+        "Paste the Instructions into the task’s **Instructions** field.",
+        "Set **Frequency** to **Hourly**, then **Save**.",
+        "IMPORTANT: **Run the scheduled task once**. When Penopta tools ask for permission, choose **Always allow** — hourly runs are unattended, and anything left needing approval will stop the sync from finishing.",
       ],
       notes: [],
       verifyHref: claudeVerifyHref(),

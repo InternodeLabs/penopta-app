@@ -69,7 +69,9 @@ export default async function IntegrationSetupPage({
   const mcpVerified = Boolean(mcpVerification);
   const appUrl = getPublicAppUrl();
   const target =
-    provider.id === "chatgpt" ? "ChatGPT scheduled task" : "Claude routine";
+    provider.id === "chatgpt"
+      ? "ChatGPT scheduled task"
+      : "Claude scheduled task";
   const skillBody = await readSyncSkill();
   const instructions = syncRoutineInstructions(skillBody);
   const mcpUrl = mcpConnectorUrl(appUrl);
