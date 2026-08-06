@@ -144,7 +144,7 @@ export function chatgptInstallHelpHref(): string {
   const prompt = [
     "Walk me through setting up a Penopta sync as a ChatGPT scheduled task.",
     'I want to create a scheduled task named "Penopta Sync".',
-    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP server — no key or endpoint) into the task description, set it to run in a new chat, and set the schedule to repeat Hourly.",
+    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP server — no key or endpoint) into the task description, set Runs in to ChatGPT cloud, and set Frequency to Custom Hourly (every 1 hour).",
     "After creating it, I need to run the scheduled task once and choose \"Always allow\" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.",
     "ChatGPT's UI may have changed — show me the current steps to open Scheduled tasks, create one manually, run it once, and point out where each setting lives.",
   ].join(" ");
@@ -250,8 +250,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         "In ChatGPT, open Scheduled tasks, click Create, and choose “Set up manually”.",
         'Name the task "Penopta Sync".',
         "Paste the Instructions into the “Describe what ChatGPT should do” field.",
-        "Under Details, set Runs in to “New chat”.",
-        "Under Frequency, set Repeat to Hourly, then save the task.",
+        "Under Details, set Runs in to “ChatGPT cloud”. Under Frequency, set Repeat to Custom and Repeats to Hourly (every 1 hour), then save the task.",
         "**Run the scheduled task now** once. Penopta will ask for your permission on each step. Choose **Always allow**, __anything not approved will stop the sync from running in the future.__",
       ],
       notes: [],
