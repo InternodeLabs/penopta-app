@@ -130,10 +130,10 @@ export function chatgptVerifyHref(): string {
 export function claudeInstallHelpHref(): string {
   const prompt = [
     "Walk me through setting up a Penopta sync routine in Claude.",
-    "I want to create a routine named \"Penopta Local Sync\" (local) or \"Penopta Cloud Sync\" (cloud).",
-    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP connector — no key or endpoint) into the Instructions field, and I want the schedule set to Hourly.",
+    "I want to create a **Cloud** routine named \"Penopta Cloud Sync\" (choose Cloud, not Local, from New routine).",
+    "I'll paste the Penopta sync instructions (a skill that delivers via the Penopta MCP connector — no key or endpoint) into the Instructions field, set the schedule to Hourly, and under Connectors leave **only** the Penopta connector selected (remove any others).",
     "After creating it, I need to run the routine once and choose \"Always allow\" when Penopta tools ask for permission, so later hourly runs finish without waiting for approval.",
-    "Claude's UI may have changed — show me the current steps to create this routine, run it once, and set those permissions, and point out where each setting lives.",
+    "Claude's UI may have changed — show me the current steps to create this cloud routine, run it once, and set those permissions, and point out where each setting lives.",
   ].join(" ");
 
   return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
@@ -206,11 +206,12 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       ],
       steps: [
         "**Copy the Instructions** below — they contain the full sync skill. Delivery runs through the Penopta MCP connector you added above, so there's no key or token to paste.",
-        "In Claude, go to **Routines** and create a new routine.",
-        'Name it **"Penopta Local Sync"** for a local routine, or **"Penopta Cloud Sync"** for a cloud one.',
+        "In Claude, go to **Routines**, open **New routine**, and choose **Cloud**.",
+        'Name it **"Penopta Cloud Sync"**.',
         "Paste the Instructions into the routine’s **Instructions** field.",
-        "Set the schedule to **Hourly**, then create the routine.",
-        "**Run the routine once** from the Routines list. When Penopta tools ask for permission, choose **Always allow** — hourly runs are unattended, and anything left on “Needs approval” will stop the sync from finishing.",
+        "Set the schedule to **Hourly**.",
+        "Under **Connectors**, leave **only** the Penopta connector selected — remove any others (e.g. Internode).",
+        "Create the routine, then **run it once** from the Routines list. When Penopta tools ask for permission, choose **Always allow** — hourly runs are unattended, and anything left on “Needs approval” will stop the sync from finishing.",
       ],
       notes: [],
       verifyHref: claudeVerifyHref(),
