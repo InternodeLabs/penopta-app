@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +14,7 @@ export function CopyField({
   multiline = false,
   rows = 3,
   action,
+  reloadAction,
 }: {
   label: string;
   value: string;
@@ -27,7 +29,10 @@ export function CopyField({
   rows?: number;
   /** Optional secondary button that opens `href` in a new tab. */
   action?: { label: string; href: string };
+  /** Optional button that refreshes the page (e.g. after verifying MCP). */
+  reloadAction?: { label: string };
 }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const display =
     displayValue ??
@@ -95,6 +100,16 @@ export function CopyField({
             <ExternalLink className="h-4 w-4" aria-hidden />
             {action.label}
           </a>
+        ) : null}
+        {reloadAction ? (
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className="inline-flex h-auto shrink-0 items-center gap-1.5 self-start rounded-lg border border-border bg-surface px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-background"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            {reloadAction.label}
+          </button>
         ) : null}
       </div>
       {hint ? <p className="mt-1.5 ml-1 text-xs text-muted">{hint}</p> : null}

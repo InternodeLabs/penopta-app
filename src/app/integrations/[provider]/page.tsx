@@ -43,8 +43,6 @@ function renderStepText(step: string) {
   });
 }
 
-
-
 export default async function IntegrationSetupPage({
   params,
 }: {
@@ -76,6 +74,8 @@ export default async function IntegrationSetupPage({
   const instructions = syncRoutineInstructions(skillBody);
   const mcpUrl = mcpConnectorUrl(appUrl);
 
+  const hasAvailableProjects = availableProjects.length > 0;
+
   /** Shown expanded before verification, and behind a disclosure after. */
   const mcpSetupInstructions = (
     <>
@@ -99,6 +99,49 @@ export default async function IntegrationSetupPage({
         value={mcpUrl}
         hint="Paste this into the URL field, then save and approve the Penopta sign-in prompt."
       />
+    </>
+  );
+
+  /** Shown expanded until projects exist, then behind a disclosure. */
+  const syncSetupInstructions = (
+    <>
+      <div>
+        <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
+          Sync your conversations to Penopta automatically
+        </h2>
+        <p className="mt-2 mb-3 max-w-2xl text-sm leading-relaxed text-muted">
+          Optional: also push a periodic snapshot of your conversations into
+          Penopta on a schedule.
+        </p>
+        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
+          Steps
+        </h3>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+          {provider.steps.map((step) => (
+            <li key={step}>{renderStepText(step)}</li>
+          ))}
+        </ol>
+      </div>
+      <CopyField
+        label="Copy & Paste these instructions"
+        value={instructions}
+        multiline
+        rows={1}
+        hint={`Paste into your ${target}. Delivery runs through the Penopta MCP connector — no key or token included.`}
+      />
+      {provider.troubleHelp ? (
+        <p className="text-sm text-muted">
+          {provider.troubleHelp.text}{" "}
+          <a
+            href={provider.troubleHelp.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
+          >
+            {provider.troubleHelp.linkLabel}
+          </a>
+        </p>
+      ) : null}
     </>
   );
 
@@ -138,7 +181,9 @@ export default async function IntegrationSetupPage({
                 <CheckCircle2 className="size-4 shrink-0" aria-hidden />
                 <span>
                   MCP connection verified
-                  {mcpVerification.agent ? ` via ${mcpVerification.agent}` : ""}{" "}
+                  {mcpVerification.agent
+                    ? ` via ${mcpVerification.agent}`
+                    : ""}{" "}
                   {formatDistanceToNow(mcpVerification.verifiedAt, {
                     addSuffix: true,
                   })}
@@ -170,8 +215,9 @@ export default async function IntegrationSetupPage({
               </h2>
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              To sync context for your agents, you need to verify the MCP connection in {provider.name}. Once verified, we can
-              reach Penopta, the scheduled-sync setup appears here.
+              To sync context for your agents, you need to verify the MCP
+              connection in {provider.name}. Once verified, we can reach
+              Penopta, the scheduled-sync setup appears here.
             </p>
             <div className="mt-4">
               <CopyField
@@ -182,6 +228,7 @@ export default async function IntegrationSetupPage({
                     ? { label: "Run", href: provider.verifyHref }
                     : undefined
                 }
+                reloadAction={{ label: "Reload when run" }}
                 hint={`Run opens ${provider.name} with the command prefilled. Reload this page once it confirms.`}
               />
             </div>
@@ -199,54 +246,32 @@ export default async function IntegrationSetupPage({
               </p>
             ) : null}
           </section>
+        ) : hasAvailableProjects ? (
+          <>
+            <section className="mt-8 max-w-2xl">
+              <details className="group rounded-md bg-emerald-50 px-3 py-2 text-emerald-700">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm [&::-webkit-details-marker]:hidden">
+                  <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                  <span>
+                    Conversation sync is set up — expand to edit instructions.
+                  </span>
+                  <ChevronDown
+                    aria-hidden
+                    className="ml-auto size-4 shrink-0 transition group-open:rotate-180"
+                  />
+                  <span className="sr-only">Show sync setup instructions</span>
+                </summary>
+                <div className="mt-3 space-y-4 border-t border-emerald-200/70 pt-3 text-foreground">
+                  {syncSetupInstructions}
+                </div>
+              </details>
+            </section>
+          </>
         ) : (
           <>
-        <AvailableProjectsPanel
-          providerId={provider.id}
-          projects={availableProjects}
-        />
-
-        <section className="mt-8 max-w-2xl">
-          <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-            Sync your conversations to Penopta automatically
-          </h2>
-          <p className="mt-2 mb-3 max-w-2xl text-sm leading-relaxed text-muted">
-            Optional: also push a periodic snapshot of your conversations into
-            Penopta on a schedule.
-          </p>
-          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
-            Steps
-          </h3>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
-            {provider.steps.map((step) => (
-              <li key={step}>{renderStepText(step)}</li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="mt-8 max-w-2xl space-y-4">
-          <CopyField
-            label="Copy & Paste these instructions"
-            value={instructions}
-            multiline
-            rows={1}
-            hint={`Paste into your ${target}. Delivery runs through the Penopta MCP connector — no key or token included.`}
-          />
-        </section>
-
-        {provider.troubleHelp ? (
-          <p className="mt-3 max-w-2xl text-sm text-muted">
-            {provider.troubleHelp.text}{" "}
-            <a
-              href={provider.troubleHelp.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-zinc-600 no-underline decoration-muted transition hover:text-zinc-900"
-            >
-              {provider.troubleHelp.linkLabel}
-            </a>
-          </p>
-        ) : null}
+            <section className="mt-8 max-w-2xl space-y-4">
+              {syncSetupInstructions}
+            </section>
           </>
         )}
 
@@ -259,8 +284,10 @@ export default async function IntegrationSetupPage({
             </ul>
           </section>
         ) : null}
-
-       
+        <AvailableProjectsPanel
+          providerId={provider.id}
+          projects={availableProjects}
+        />
       </main>
     </IntegrationsShell>
   );
