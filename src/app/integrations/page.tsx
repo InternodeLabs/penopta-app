@@ -31,7 +31,7 @@ export default async function IntegrationsPage() {
     syncedAgents.map((name) => {
       const n = name.trim().toLowerCase();
       if (n === "claude-code" || n === "anthropic") return "claude";
-      if (n === "openai") return "chatgpt";
+      if (n === "openai" || n === "codex") return "chatgpt";
       return n;
     }),
   );

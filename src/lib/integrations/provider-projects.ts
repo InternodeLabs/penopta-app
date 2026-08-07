@@ -2,7 +2,11 @@ import type { IntegrationProviderId } from "@/lib/integrations/providers";
 import { isPrivateProjectName } from "@/lib/ingest/data";
 
 /** Providers that can discover projects into the available catalog. */
-export const PROVIDER_PROJECT_PROVIDERS = ["chatgpt", "claude"] as const;
+export const PROVIDER_PROJECT_PROVIDERS = [
+  "chatgpt",
+  "claude",
+  "cursor",
+] as const;
 
 export type ProviderProjectProvider = (typeof PROVIDER_PROJECT_PROVIDERS)[number];
 

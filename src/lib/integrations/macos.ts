@@ -125,6 +125,8 @@ export function macSyncAgentNamesForProvider(
     case "chatgpt":
       // Codex CLI is the local OpenAI agent the mac app syncs today.
       return ["chatgpt", "codex", "openai"];
+    case "cursor":
+      return ["cursor"];
   }
 }
 

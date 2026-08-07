@@ -37,7 +37,8 @@ function toPublic(row: AvailableProviderProjectRow): AvailableProviderProject {
 
 /**
  * Map an agent sync producer onto the integrations catalog provider.
- * Local Claude Code sessions count as Claude; Codex has no catalog page yet.
+ * Local Claude Code → Claude; Cursor mac sync → Cursor; Codex has no
+ * dedicated catalog page (maps under ChatGPT status only via macSync names).
  */
 export function catalogProviderForAgent(input: {
   agentName?: string | null;
@@ -56,6 +57,7 @@ export function catalogProviderForAgent(input: {
     ) {
       return "claude";
     }
+    if (token === "cursor") return "cursor";
   }
   return null;
 }
@@ -115,10 +117,15 @@ export async function ensureCatalogFromAgentThreads(
           eq(agentThreads.kind, "claude-code"),
           eq(agentThreads.kind, "claude"),
         )
-      : or(
-          eq(agentThreads.lastAgentName, "chatgpt"),
-          eq(agentThreads.kind, "chatgpt"),
-        );
+      : provider === "cursor"
+        ? or(
+            eq(agentThreads.lastAgentName, "cursor"),
+            eq(agentThreads.kind, "cursor"),
+          )
+        : or(
+            eq(agentThreads.lastAgentName, "chatgpt"),
+            eq(agentThreads.kind, "chatgpt"),
+          );
 
   const rows = await db
     .select({

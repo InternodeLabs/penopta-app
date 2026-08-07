@@ -328,7 +328,7 @@ export const projectThreads = pgTable(
 export type ProjectThreadRow = typeof projectThreads.$inferSelect;
 
 /**
- * Catalog of ChatGPT/Claude projects discovered by sync (metadata only — no
+ * Catalog of ChatGPT/Claude/Cursor projects discovered by sync (metadata only — no
  * transcripts). Users opt individual rows into tracking via the integrations
  * UI; the skill then syncs threads only for tracked projects. Distinct from
  * Penopta's own `project` table.
@@ -342,7 +342,7 @@ export const availableProviderProjects = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     /** Portal user who last registered/updated this catalog row. */
     ownerUserId: text("owner_user_id").notNull(),
-    provider: text("provider", { enum: ["chatgpt", "claude"] }).notNull(),
+    provider: text("provider", { enum: ["chatgpt", "claude", "cursor"] }).notNull(),
     /** Stable id from the provider, used to find the project again later. */
     externalProjectId: text("external_project_id").notNull(),
     name: text("name").notNull(),
@@ -390,7 +390,7 @@ export const syncSkillSightings = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: ["chatgpt", "claude"] }).notNull(),
+    provider: text("provider", { enum: ["chatgpt", "claude", "cursor"] }).notNull(),
     /** Version the schedule reported; null means the call omitted skillVersion. */
     lastSkillVersion: integer("last_skill_version"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true })

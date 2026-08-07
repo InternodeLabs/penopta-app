@@ -27,6 +27,7 @@ function providerIdFromAgentName(
   if (n === "claude" || n === "claude-code" || n === "anthropic")
     return "claude";
   if (n === "chatgpt" || n === "openai" || n === "codex") return "chatgpt";
+  if (n === "cursor") return "cursor";
   return null;
 }
 

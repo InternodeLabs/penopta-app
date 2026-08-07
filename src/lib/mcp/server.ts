@@ -237,14 +237,14 @@ export function buildPenoptaMcpServer(
       title: "Known provider projects",
       description:
         "List provider projects Penopta already has in its available catalog " +
-        "for chatgpt or claude. Call this during sync discovery, then push only " +
+        "for chatgpt, claude, or cursor. Call this during sync discovery, then push only " +
         "unknown projects via make_projects_available. Returns metadata only " +
         "(projectId, name, createdAt, tracked, private) — no transcripts. " +
         "Pass skillVersion from the pasted sync skill so Penopta can detect " +
         "outdated schedule instructions.",
       inputSchema: z.object({
         provider: providerSchema.describe(
-          'Which provider catalog to read: "chatgpt" or "claude".',
+          'Which provider catalog to read: "chatgpt", "claude", or "cursor".',
         ),
         skillVersion: skillVersionInput,
       }),
@@ -276,7 +276,7 @@ export function buildPenoptaMcpServer(
         "Pass skillVersion from the pasted sync skill.",
       inputSchema: z.object({
         provider: providerSchema.describe(
-          'Which provider these projects come from: "chatgpt" or "claude".',
+          'Which provider these projects come from: "chatgpt", "claude", or "cursor".',
         ),
         skillVersion: skillVersionInput,
         projects: z
@@ -335,7 +335,7 @@ export function buildPenoptaMcpServer(
         "pasted sync skill.",
       inputSchema: z.object({
         provider: providerSchema.describe(
-          'Which provider catalog to read: "chatgpt" or "claude".',
+          'Which provider catalog to read: "chatgpt", "claude", or "cursor".',
         ),
         skillVersion: skillVersionInput,
       }),

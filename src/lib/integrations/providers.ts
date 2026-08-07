@@ -10,9 +10,10 @@
 import type { ComponentType } from "react";
 
 import Anthropic from "@/components/icons/Anthropic";
+import Cursor from "@/components/icons/Cursor";
 import OpenAI from "@/components/icons/OpenAI";
 
-export type IntegrationProviderId = "claude" | "chatgpt";
+export type IntegrationProviderId = "claude" | "chatgpt" | "cursor";
 
 export type CopyField = {
   /** Short label above the field */
@@ -44,9 +45,15 @@ export type IntegrationProvider = {
   setupTitle: string;
   /** Intro paragraph under the title */
   intro: string;
+  /**
+   * When true, this provider is wired through Penopta Sync on macOS only —
+   * no MCP connector or scheduled skill yet. The setup page skips those
+   * sections and points at the Mac app.
+   */
+  macosOnly?: boolean;
   /** Steps to add Penopta as a live MCP connector */
   mcpSteps: string[];
-  /** Numbered steps for the optional scheduled sync */
+  /** Numbered steps for the optional scheduled sync (or Mac app setup) */
   steps: string[];
   /** Extra notes at the bottom */
   notes?: string[];
@@ -278,6 +285,30 @@ export function listIntegrationProviders(): IntegrationProvider[] {
         href: chatgptInstallHelpHref(),
       },
       tryNowHref: chatgptTryNowHref,
+    },
+    {
+      id: "cursor",
+      name: "Cursor",
+      byline: "by Anysphere",
+      description:
+        "Sync local Cursor agent chats into Penopta with the macOS companion app.",
+      iconBg: "bg-black",
+      icon: Cursor,
+      setupTitle: "Connect Cursor",
+      intro:
+        "Cursor agent transcripts live on your Mac under ~/.cursor. Penopta Sync reads them and uploads them to your org — there’s no Cursor MCP connector yet.",
+      macosOnly: true,
+      mcpSteps: [],
+      steps: [
+        "Install **Penopta Sync** from the macOS integration page (download the zip, then Right-click → Open the first time).",
+        "Sign in with the same Penopta account you use here.",
+        "Grant folder access to **~/.cursor**, then press **Sync** (or leave the app running for hourly auto-sync).",
+        "Return here — once a sync lands, this integration shows as connected and Cursor projects appear below.",
+      ],
+      notes: [
+        "Only parent agent chats are uploaded; nested subagent transcripts are skipped.",
+        "Sessions titled or living under projects prefixed with P: or Private: are never uploaded.",
+      ],
     },
   ];
 }

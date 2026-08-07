@@ -66,11 +66,13 @@ export type McpSetupLink = {
 function setupLabelForProvider(provider: IntegrationProvider): string {
   if (provider.id === "claude") return "Integrate Claude";
   if (provider.id === "chatgpt") return "Integrate OpenAI";
+  if (provider.id === "cursor") return "Integrate Cursor";
   return `Integrate ${provider.name}`;
 }
 
 export function listMcpSetupLinks(): McpSetupLink[] {
-  const providers = listIntegrationProviders();
+  // Cursor is macOS-only today — don’t list it as an MCP setup destination.
+  const providers = listIntegrationProviders().filter((p) => !p.macosOnly);
   return [
     ...providers.map((provider) => ({
       id: provider.id,
