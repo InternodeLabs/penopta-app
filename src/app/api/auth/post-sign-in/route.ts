@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/post-sign-in";
 
 /**
- * After Google / passkey sign-in: first-time accounts land on integrations;
+ * After social / passkey sign-in: first-time accounts land on integrations;
  * returning users continue to `?to=` (default `/`).
  */
 export async function GET(request: NextRequest) {

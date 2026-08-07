@@ -1,5 +1,5 @@
 /**
- * Start sign-in on `/` (Better Auth Google / passkey). Logged-out users land
+ * Start sign-in on `/` (Better Auth Google / GitHub / passkey). Logged-out users land
  * on `/` already; this helper preserves returnTo for protected redirects.
  */
 export function loginStartHref(returnTo?: string | null): string {

@@ -1,6 +1,6 @@
 # Architecture
 
-Penopta is a Next.js App Router app. Auth is **Better Auth** (Google + Passkey).
+Penopta is a Next.js App Router app. Auth is **Better Auth** (Google + GitHub + Passkey).
 App data lives in Postgres via Drizzle.
 
 Local Docker / prod Neon split and Drizzle driver selection stay the same as before.
@@ -142,13 +142,16 @@ dashboard or a one-off local env that points at Neon). Do not bake that into
 
 ## Auth (Better Auth)
 
-1. `/` shows Google + Passkey when logged out.
+1. `/` shows Google + GitHub + Passkey when logged out.
 2. Better Auth handler at `/api/auth/[...all]` (OAuth callback, passkey, session).
 3. `getSession()` reads the Better Auth session cookie on the server.
 4. Sign-out via `/api/auth/logout`.
 5. Passkeys: register after sign-in (workspace header); sign in with passkey on `/`.
 
-Google Cloud redirect URI must include `{APP_URL}/api/auth/callback/google`
+OAuth redirect / callback URIs:
+- Google: `{APP_URL}/api/auth/callback/google`
+- GitHub: `{APP_URL}/api/auth/callback/github`
+
 (local `http://localhost:3200/...` and the production hostname).
 `BETTER_AUTH_URL` is optional and only needed if auth must use a different origin
 than `APP_URL`.

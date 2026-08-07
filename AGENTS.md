@@ -15,9 +15,9 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 ### Auth
 
 - Penopta owns identity via **Better Auth** (not Internode / portal-frontend).
-- Providers: **Google** and **Passkey** now; GitHub / Apple can be added later.
+- Providers: **Google**, **GitHub**, and **Passkey** now; Apple can be added later.
 - The app is **login-required**. There is no logged-out product UI and no public project list.
-- `/` is the sign-in page when logged out (Google + Passkey). After sign-in it is the workspace.
+- `/` is the sign-in page when logged out (Google + GitHub + Passkey). After sign-in it is the workspace.
 - Sign-in CTAs for protected routes use `loginStartHref(returnTo)` → `/?returnTo=…`.
   `/authenticating` only forwards to that. `/login` only forwards auth errors onto `/?error=…`.
 - Session user id comes from Better Auth (`session.user.id`). Use that string as `owner_user_id`.

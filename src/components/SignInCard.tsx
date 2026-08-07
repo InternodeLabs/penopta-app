@@ -30,32 +30,29 @@ function GoogleMark() {
   );
 }
 
+function GitHubMark() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" />
+    </svg>
+  );
+}
+
 function PasskeyMark() {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
+    <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 fill-current">
       <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 5.25a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.5a7.5 7.5 0 0 1 15 0"
+        fill-rule="evenodd"
+        d="M16.6945 12.1334C16.3969 12.3459 16.3035 12.792 16.562 13.0505C16.8653 13.3538 16.8653 13.8454 16.562 14.1487L16.4444 14.2663C16.0763 14.6345 16.0763 15.2314 16.4444 15.5996C16.8126 15.9678 16.8126 16.5647 16.4444 16.9329L15.6869 17.6905C15.4916 17.8858 15.175 17.8858 14.9798 17.6905L13.8484 16.5592C13.6609 16.3716 13.5556 16.1173 13.5556 15.8521V12.4113C12.5045 11.912 11.7778 10.8407 11.7778 9.59961C11.7778 7.88139 13.1707 6.48849 14.8889 6.48849C16.6071 6.48849 18 7.88139 18 9.59961C18 10.6446 17.4848 11.5693 16.6945 12.1334ZM14.8889 8.26627C15.3798 8.26627 15.7778 8.66424 15.7778 9.15516C15.7778 9.64608 15.3798 10.044 14.8889 10.044C14.398 10.044 14 9.64608 14 9.15516C14 8.66424 14.398 8.26627 14.8889 8.26627Z"
       />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 12.75v3.75m0 0 1.5 1.5M12 16.5l-1.5 1.5"
-      />
+      <path d="M10.7017 11.0931C10.0031 10.9296 9.1829 10.8342 8.22222 10.8342C3.16667 10.8342 2 13.4757 2 14.7848C2 16.0939 3.04467 17.1552 4.33333 17.1552H12.1111C12.1484 17.1552 12.1854 17.1543 12.2222 17.1525V13.1552C11.5324 12.637 10.9975 11.9221 10.7017 11.0931Z" />
+      <path d="M8 9C9.65685 9 11 7.65685 11 6C11 4.34315 9.65685 3 8 3C6.34315 3 5 4.34315 5 6C5 7.65685 6.34315 9 8 9Z" />
     </svg>
   );
 }
 
 /**
- * Logged-out home. Google OAuth + passkey via Better Auth.
+ * Logged-out home. Google / GitHub OAuth + passkey via Better Auth.
  */
 export function SignInCard({
   returnTo,
@@ -109,6 +106,17 @@ export function SignInCard({
     }
   }
 
+  async function continueWithGitHub() {
+    setLocalError(null);
+    const { error } = await authClient.signIn.social({
+      provider: "github",
+      callbackURL: afterAuthHref,
+    });
+    if (error) {
+      setLocalError(error.message || "GitHub sign-in failed. Try again.");
+    }
+  }
+
   async function continueWithPasskey() {
     setLocalError(null);
     const { error } = await authClient.signIn.passkey({
@@ -124,7 +132,7 @@ export function SignInCard({
     if (error) {
       setLocalError(
         error.message ||
-          "Passkey sign-in failed. Sign in with Google first, then add a passkey.",
+          "Passkey sign-in failed. Sign in with Google or GitHub first, then add a passkey.",
       );
     }
   }
@@ -169,6 +177,16 @@ export function SignInCard({
           >
             <GoogleMark />
             Continue with Google
+          </button>
+
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void continueWithGitHub()}
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background disabled:opacity-60"
+          >
+            <GitHubMark />
+            Continue with GitHub
           </button>
 
           <button

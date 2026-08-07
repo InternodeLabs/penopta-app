@@ -210,7 +210,7 @@ export function AccountSettingsDialog({
                 </p>
                 {account.passkeys.length === 0 ? (
                   <p className="mt-2 text-sm text-muted">
-                    No passkeys yet. Add one to sign in without Google next time.
+                    No passkeys yet. Add one to sign in without Google or GitHub next time.
                   </p>
                 ) : (
                   <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
