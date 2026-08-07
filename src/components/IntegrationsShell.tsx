@@ -2,17 +2,26 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/Brand";
+import {
+  listIntegrationNav,
+  type IntegrationNavItem,
+} from "@/lib/integrations/nav";
 import type { IntegrationProvider } from "@/lib/integrations/providers";
 
 export function IntegrationsShell({
   children,
   providers,
   activeProviderId,
+  navItems,
 }: {
   children: ReactNode;
   providers: IntegrationProvider[];
   activeProviderId?: string;
+  /** Optional override; defaults to MCP providers + macOS App. */
+  navItems?: IntegrationNavItem[];
 }) {
+  const items = navItems ?? listIntegrationNav(providers);
+
   return (
     <div className="flex min-h-dvh bg-background">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
@@ -46,17 +55,17 @@ export function IntegrationsShell({
                 All
               </Link>
             </li>
-            {providers.map((provider) => (
-              <li key={provider.id}>
+            {items.map((item) => (
+              <li key={item.id}>
                 <Link
-                  href={`/integrations/${provider.id}`}
+                  href={item.href}
                   className={`block rounded-md px-2 py-1.5 text-sm transition ${
-                    activeProviderId === provider.id
+                    activeProviderId === item.id
                       ? "bg-surface font-medium text-foreground shadow-sm"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
-                  {provider.name}
+                  {item.name}
                 </Link>
               </li>
             ))}
