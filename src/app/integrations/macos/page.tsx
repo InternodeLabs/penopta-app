@@ -1,13 +1,16 @@
 import { formatDistanceToNow } from "date-fns";
-import { CheckCircle2, Download } from "lucide-react";
+import { CheckCircle2, ChevronDown, Download } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ChatHelpMenu } from "@/components/ChatHelpMenu";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
 import Apple from "@/components/icons/Apple";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
+  chatgptMacosInstallHelpHref,
+  claudeMacosInstallHelpHref,
   getPenoptaSyncDownloadUrl,
   getPenoptaSyncInstallStatus,
   macosIntegration,
@@ -38,6 +41,55 @@ export default async function MacosIntegrationPage() {
   const { activeOrg } = await resolveActiveOrg(session.user.id);
   const status = await getPenoptaSyncInstallStatus(activeOrg.id);
   const downloadUrl = getPenoptaSyncDownloadUrl();
+
+  const installInstructions = (
+    <>
+      <div>
+        <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
+          Why the macOS app
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          {macosIntegration.description}
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
+          Steps
+        </h3>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+          {macosIntegration.steps.map((step) => (
+            <li key={step}>{renderStepText(step)}</li>
+          ))}
+        </ol>
+      </div>
+
+      <a
+        href={downloadUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
+      >
+        <Download className="size-4" aria-hidden />
+        Download MacOS App
+      </a>
+
+          <ChatHelpMenu
+            options={[
+              {
+                label: "Ask Claude",
+                href: claudeMacosInstallHelpHref(),
+                provider: "claude",
+              },
+              {
+                label: "Ask ChatGPT",
+                href: chatgptMacosInstallHelpHref(),
+                provider: "chatgpt",
+              },
+            ]}
+          />
+    </>
+  );
 
   return (
     <IntegrationsShell providers={providers} activeProviderId="macos">
@@ -70,49 +122,33 @@ export default async function MacosIntegrationPage() {
 
         {status.installed && status.lastSyncedAt ? (
           <section className="mt-8 max-w-2xl">
-            <div className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              <CheckCircle2 className="size-4 shrink-0" aria-hidden />
-              <span>
-                Installed — last sync
-                {status.lastAgentName ? ` (${status.lastAgentName})` : ""}{" "}
-                {formatDistanceToNow(status.lastSyncedAt, { addSuffix: true })}
-                .
-              </span>
-            </div>
+            <details className="group rounded-md bg-emerald-50 px-3 py-2 text-emerald-700">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm [&::-webkit-details-marker]:hidden">
+                <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                <span>
+                  Installed — last sync
+                  {status.lastAgentName ? ` (${status.lastAgentName})` : ""}{" "}
+                  {formatDistanceToNow(status.lastSyncedAt, {
+                    addSuffix: true,
+                  })}
+                  .
+                </span>
+                <ChevronDown
+                  aria-hidden
+                  className="ml-auto size-4 shrink-0 transition group-open:rotate-180"
+                />
+                <span className="sr-only">Show install instructions</span>
+              </summary>
+              <div className="mt-3 space-y-4 border-t border-emerald-200/70 pt-3 text-foreground">
+                {installInstructions}
+              </div>
+            </details>
           </section>
-        ) : null}
-
-        <section className="mt-8 max-w-2xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
-              Why the macOS app
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              {macosIntegration.description}
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Steps
-            </h3>
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
-              {macosIntegration.steps.map((step) => (
-                <li key={step}>{renderStepText(step)}</li>
-              ))}
-            </ol>
-          </div>
-
-          <a
-            href={downloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
-          >
-            <Download className="size-4" aria-hidden />
-            {status.installed ? "Download again" : "Download for macOS"}
-          </a>
-        </section>
+        ) : (
+          <section className="mt-8 max-w-2xl space-y-4">
+            {installInstructions}
+          </section>
+        )}
 
         {macosIntegration.notes.length ? (
           <section className="mt-8 max-w-2xl">

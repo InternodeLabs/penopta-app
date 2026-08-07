@@ -198,6 +198,18 @@ You must actually deliver the payload. Collecting context without delivering it 
    - clearly report: “Context was collected but not delivered: no Penopta MCP tool available.”
    - include the exact configuration needed to enable the Penopta MCP connector
 
+## On-demand single-thread tracking (not part of the hourly run)
+
+When a user asks in a live chat to track, save, or push **this** conversation into Penopta (including a standalone chat that is not in a tracked project), do **not** use `sync_threads`. Call:
+
+```text
+penopta_track_thread({ thread, agent })
+```
+
+Build the same thread object shape as above (stable `threadId`, title, `sourceActivity` with exact visible turns, `workingState` handoff). Include `projectName` when the chat belongs to a project; omit it for standalone chats. Skip private-prefixed titles/projects (`P:` / `Private:`). A successful call returns `{ "ok": true, "tracked": true, "threadId", "url" }`.
+
+Hourly scheduled runs still use `tracked_projects` + `sync_threads` only — do not call `penopta_track_thread` from the hourly skill.
+
 ## Safety and quality rules
 
 - Discover projects with metadata only via `known_projects` / `make_projects_available`; never attach transcripts to catalog updates.

@@ -58,3 +58,25 @@ export async function getAgentThread(
 
   return rows[0] ?? null;
 }
+
+/**
+ * A single thread in an org by the producing agent's stable thread id
+ * (payload `threadId`), or null if not found.
+ */
+export async function getAgentThreadByExternalId(
+  orgId: string,
+  externalThreadId: string,
+): Promise<AgentThreadRow | null> {
+  const rows = await db
+    .select()
+    .from(agentThreads)
+    .where(
+      and(
+        eq(agentThreads.orgId, orgId),
+        eq(agentThreads.threadId, externalThreadId),
+      ),
+    )
+    .limit(1);
+
+  return rows[0] ?? null;
+}

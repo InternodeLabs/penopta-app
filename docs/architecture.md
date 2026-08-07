@@ -101,6 +101,10 @@ agents. Auth is `Authorization: Bearer <user_api_key>`; the body field
 (duplicate → 200). Threads are upserted for current-state reads; snapshots keep
 per-run history for facets like agent/model over time.
 
+MCP tools on `/api/mcp` share that ingest path: `sync_threads` for hourly
+windowed sync of tracked projects, and `penopta_track_thread` for an on-demand
+single-thread push (live “track this chat,” including standalone threads).
+
 ### Reads
 
 - All project routes require a session. Logged-out users are sent to sign-in.

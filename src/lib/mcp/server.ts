@@ -10,8 +10,18 @@ import {
 } from "@/lib/integrations/provider-projects-data";
 import { PROVIDER_PROJECT_PROVIDERS } from "@/lib/integrations/provider-projects";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
-import { DuplicateRunError, ingestAgentSync } from "@/lib/ingest/data";
-import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
+import {
+  DuplicateRunError,
+  ingestAgentSync,
+  isPrivateProjectName,
+  isPrivateThreadTitle,
+  resolveThreadProjectName,
+} from "@/lib/ingest/data";
+import {
+  agentSyncPayloadSchema,
+  toTrackThreadSyncPayload,
+  trackThreadPayloadSchema,
+} from "@/lib/ingest/schema";
 import type { ApiKeyOwner } from "@/lib/keys/data";
 import {
   mcpGetProjectContext,
@@ -20,6 +30,7 @@ import {
   mcpSearchThreads,
 } from "@/lib/mcp/data";
 import { markTokenVerified } from "@/lib/oauth/tokens";
+import { getAgentThreadByExternalId } from "@/lib/threads/data";
 
 const providerSchema = z.enum(PROVIDER_PROJECT_PROVIDERS);
 
@@ -342,6 +353,99 @@ export function buildPenoptaMcpServer(
         }
         console.error("mcp sync_threads", err);
         return errorResult("Failed to ingest sync payload.");
+      }
+    },
+  );
+
+  server.registerTool(
+    "penopta_track_thread",
+    {
+      title: "Track thread",
+      description:
+        "Push a single conversation thread into Penopta for later use " +
+        "(search, project context, handoffs). Call this when the user asks to " +
+        "track, save, or sync this chat — including standalone chats outside " +
+        "tracked projects. Build a concise workingState handoff and include " +
+        "exact visible transcript turns in sourceActivity (isExact: true). " +
+        "Use a stable provider threadId when known. Never send threads whose " +
+        "title (or projectName) starts with P: or Private:. Identity comes " +
+        "from your authenticated connection — no API key or penopta_user_id.",
+      inputSchema: trackThreadPayloadSchema,
+    },
+    async (input) => {
+      if (isPrivateThreadTitle(input.thread.title)) {
+        return errorResult(
+          "This thread title starts with P: or Private: and cannot be tracked.",
+        );
+      }
+      const projectName = resolveThreadProjectName(input.thread);
+      if (projectName && isPrivateProjectName(projectName)) {
+        return errorResult(
+          "This thread belongs to a private-prefixed project and cannot be tracked.",
+        );
+      }
+
+      const payload = toTrackThreadSyncPayload(input);
+      try {
+        const { run, threadsUpserted } = await ingestAgentSync(
+          owner.ownerUserId,
+          owner.orgId,
+          payload,
+        );
+        if (threadsUpserted === 0) {
+          return errorResult(
+            "Thread was not stored (private filters). Nothing was tracked.",
+          );
+        }
+
+        const catalogProvider = catalogProviderForAgent({
+          agentName: payload.agent.name,
+          kind: input.thread.kind,
+        });
+        if (catalogProvider) {
+          await ensureCatalogFromAgentThreads(
+            owner.ownerUserId,
+            owner.orgId,
+            catalogProvider,
+          );
+        }
+
+        const stored = await getAgentThreadByExternalId(
+          owner.orgId,
+          input.thread.threadId,
+        );
+        const internalId = stored?.id ?? null;
+        return jsonResult({
+          ok: true,
+          tracked: true,
+          runId: run.runId,
+          syncRunId: run.id,
+          externalThreadId: input.thread.threadId,
+          threadId: internalId,
+          title: input.thread.title,
+          url: internalId ? threadUrl(internalId) : null,
+        });
+      } catch (err) {
+        if (err instanceof DuplicateRunError) {
+          const stored = await getAgentThreadByExternalId(
+            owner.orgId,
+            input.thread.threadId,
+          );
+          const internalId = stored?.id ?? null;
+          return jsonResult({
+            ok: true,
+            tracked: true,
+            duplicate: true,
+            runId: err.existing.runId,
+            syncRunId: err.existing.id,
+            externalThreadId: input.thread.threadId,
+            threadId: internalId,
+            title: input.thread.title,
+            url: internalId ? threadUrl(internalId) : null,
+          });
+        }
+        console.error("mcp penopta_track_thread", err);
+        return errorResult("Failed to track thread.");
       }
     },
   );

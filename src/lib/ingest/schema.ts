@@ -35,6 +35,12 @@ export const threadPayloadSchema = z.object({
   workingState: workingStateSchema,
 });
 
+export const agentMetaSchema = z.object({
+  name: z.string().min(1),
+  model: z.string().min(1),
+  effort: z.string().min(1).optional(),
+});
+
 export const agentSyncPayloadSchema = z.object({
   schemaVersion: z.string().min(1),
   agentId: z.string().min(1),
@@ -44,11 +50,7 @@ export const agentSyncPayloadSchema = z.object({
   runId: z.string().min(1),
   windowStart: isoDateTime,
   windowEnd: isoDateTime,
-  agent: z.object({
-    name: z.string().min(1),
-    model: z.string().min(1),
-    effort: z.string().min(1).optional(),
-  }),
+  agent: agentMetaSchema,
   captureCoverage: z.object({
     enumerationAvailable: z.boolean(),
     transcriptsAvailable: z.boolean(),
@@ -64,3 +66,60 @@ export const agentSyncPayloadSchema = z.object({
 });
 
 export type AgentSyncPayload = z.infer<typeof agentSyncPayloadSchema>;
+
+/**
+ * On-demand single-thread push via MCP `penopta_track_thread`.
+ * Wraps into a one-thread agent-sync run server-side.
+ */
+export const trackThreadPayloadSchema = z.object({
+  thread: threadPayloadSchema.describe(
+    "The conversation to push: stable threadId, title, transcript " +
+      "(sourceActivity), and workingState handoff.",
+  ),
+  agent: agentMetaSchema.describe(
+    'Producing agent, e.g. { name: "claude", model: "claude-opus-4-8" }.',
+  ),
+  /** Optional idempotency key; generated when omitted. */
+  runId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Optional idempotency key. Omit to auto-generate."),
+});
+
+export type TrackThreadPayload = z.infer<typeof trackThreadPayloadSchema>;
+
+/** Agent id stamped on sync runs created by penopta_track_thread. */
+export const TRACK_THREAD_AGENT_ID = "penopta-track-thread";
+
+/** Build a one-thread ingest payload from a track-thread request. */
+export function toTrackThreadSyncPayload(
+  input: TrackThreadPayload,
+  now: Date = new Date(),
+): AgentSyncPayload {
+  const windowEnd = now.toISOString();
+  const windowStart =
+    input.thread.updatedAt ?? input.thread.createdAt ?? windowEnd;
+  return {
+    schemaVersion: "1.0",
+    agentId: TRACK_THREAD_AGENT_ID,
+    runId:
+      input.runId ??
+      `track-${input.thread.threadId}-${now.getTime().toString(36)}`,
+    windowStart,
+    windowEnd,
+    agent: input.agent,
+    captureCoverage: {
+      enumerationAvailable: true,
+      transcriptsAvailable: true,
+      limitation: null,
+    },
+    threads: [input.thread],
+    runSummary: {
+      threadsReviewed: 1,
+      threadsChanged: 1,
+      threadsUnavailable: 0,
+      importantUpdates: [],
+    },
+  };
+}
