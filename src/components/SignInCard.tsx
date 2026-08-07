@@ -181,6 +181,28 @@ export function SignInCard({
             Continue with Passkey
           </button>
         </div>
+
+        <p className="mt-6 text-center text-xs text-muted">
+          <a
+            href="https://penopta.com/privacy"
+            className="underline-offset-2 transition hover:text-foreground hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Privacy
+          </a>
+          <span className="mx-1.5" aria-hidden>
+            ·
+          </span>
+          <a
+            href="https://penopta.com/terms"
+            className="underline-offset-2 transition hover:text-foreground hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Terms
+          </a>
+        </p>
       </div>
     </main>
   );
