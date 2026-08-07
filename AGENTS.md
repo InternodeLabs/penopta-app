@@ -29,7 +29,13 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 - Every owned row carries `org_id` (`project`, `user_api_key`, `agent_sync_run`, `agent_thread`, `agent_thread_snapshot`). `owner_user_id` remains for attribution.
 - `project` is the starter owned entity (`public` | `private`). Reads require a session and are scoped to the active org; within an org a project is visible when `public` or `owner_user_id = viewer`.
 - `user_api_key`: one active opaque key per user **per org** (30-day TTL), minted for the active org. Re-mint (rotate) or invalidate anytime. Appended to the skill URL as `key=…`; `resolveOwnerByApiKey` returns `{ ownerUserId, orgId }`. Expired/invalidated keys fail lookup.
-- Agent ingest: `POST /api/v1/agent-sync` with `Authorization: Bearer <key>`. Identity + target org come from the key; `penopta_user_id` in the body is optional and only checked for mismatch when present. Persists `agent_sync_run` + upserts `agent_thread` (+ snapshots), all stamped with the key's `org_id`.
+- Agent ingest: `POST /api/v1/agent-sync` with `Authorization: Bearer <token>`.
+  Token may be an OAuth access token (`pat_…`, same flow as MCP) or a user API
+  key (`pk_…`). Identity + target org come from the token; `penopta_user_id` in
+  the body is optional and only checked for mismatch when present. Persists
+  `agent_sync_run` + upserts `agent_thread` (+ snapshots), all stamped with the
+  resolved `org_id`. OAuth uses the user's **active** org at request time; API
+  keys use the org stamped at mint.
 
 ### Environments
 

@@ -7,8 +7,9 @@ import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
 /**
  * Ingest a windowed agent thread-context sync.
  *
- * Auth: `Authorization: Bearer <user_api_key>` must resolve to an active key,
- * and `penopta_user_id` in the body must match that key's owner.
+ * Auth: `Authorization: Bearer <token>` where token is either an OAuth access
+ * token (`pat_…`, same flow as MCP) or a user API key (`pk_…`). Optional
+ * `penopta_user_id` in the body must match the resolved owner when present.
  */
 export async function POST(request: NextRequest) {
   const owner = await resolveOwnerFromBearer(
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   );
   if (!owner) {
     return NextResponse.json(
-      { error: "Invalid or missing API key." },
+      { error: "Invalid or missing bearer token." },
       { status: 401 },
     );
   }
