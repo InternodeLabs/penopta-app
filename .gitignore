@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Xcode drop folder for `npm run macos:publish` (raw .app; zip ships under public/downloads/)
+/macos-build/**
+!/macos-build/README.md
 
 # vercel
 .vercel

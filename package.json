@@ -15,7 +15,8 @@
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:migrate:prod": "dotenv -e .env.production -- drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "db:seed": "dotenv -e .env.local -- tsx src/lib/db/seed.ts"
+    "db:seed": "dotenv -e .env.local -- tsx src/lib/db/seed.ts",
+    "macos:publish": "bash scripts/publish-macos-app.sh"
   },
   "dependencies": {
     "@azure/communication-email": "^1.1.0",

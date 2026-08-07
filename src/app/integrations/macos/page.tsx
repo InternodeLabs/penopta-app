@@ -13,6 +13,7 @@ import {
   claudeMacosInstallHelpHref,
   getPenoptaSyncDownloadUrl,
   getPenoptaSyncInstallStatus,
+  getPenoptaSyncRelease,
   macosIntegration,
 } from "@/lib/integrations/macos";
 import { listIntegrationProviders } from "@/lib/integrations/providers";
@@ -39,8 +40,14 @@ export default async function MacosIntegrationPage() {
 
   const providers = listIntegrationProviders();
   const { activeOrg } = await resolveActiveOrg(session.user.id);
-  const status = await getPenoptaSyncInstallStatus(activeOrg.id);
+  const [status, release] = await Promise.all([
+    getPenoptaSyncInstallStatus(activeOrg.id),
+    getPenoptaSyncRelease(),
+  ]);
   const downloadUrl = getPenoptaSyncDownloadUrl();
+  const downloadLabel = release
+    ? `Download MacOS App (v${release.version})`
+    : "Download MacOS App";
 
   const installInstructions = (
     <>
@@ -71,7 +78,7 @@ export default async function MacosIntegrationPage() {
         className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
       >
         <Download className="size-4" aria-hidden />
-        Download MacOS App
+        {downloadLabel}
       </a>
 
           <ChatHelpMenu

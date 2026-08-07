@@ -70,8 +70,10 @@ export function buildProjectActivityFeed(
 /** Muted activity notice lines for the project main pane (not a thread view). */
 export function ProjectActivityFeed({
   lines,
+  projectId,
 }: {
   lines: ProjectActivityLine[];
+  projectId: string;
 }) {
   if (lines.length === 0) return null;
 
@@ -81,7 +83,7 @@ export function ProjectActivityFeed({
         <li key={line.key} className="text-sm leading-relaxed text-muted">
           <span className="inline-block w-16 tabular-nums">{line.timeLabel}</span>{" "}
           <Link
-            href={`/threads/${line.threadId}`}
+            href={`/projects/${projectId}?thread=${line.threadId}`}
             className="transition hover:text-foreground"
             title={line.threadTitle}
           >

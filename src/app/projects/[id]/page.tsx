@@ -1,3 +1,4 @@
+import { formatDistanceToNow } from "date-fns";
 import { ArrowLeft, MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -11,6 +12,7 @@ import {
 } from "@/components/ProjectActivityFeed";
 import { ProjectHeader } from "@/components/ProjectHeader";
 import { ProjectVisibilityControl } from "@/components/ProjectVisibilityControl";
+import { ThreadConversation } from "@/components/ThreadConversation";
 import { lookupPortalUsers } from "@/lib/auth/portal-users";
 import { getSession } from "@/lib/auth/server";
 import type { SessionUser } from "@/lib/auth/session";
@@ -34,12 +36,18 @@ function initials(user: SessionUser): string {
 
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ thread?: string }>;
 }) {
   const { id } = await params;
+  const { thread: threadParam } = await searchParams;
+  const returnPath = threadParam
+    ? `/projects/${id}?thread=${threadParam}`
+    : `/projects/${id}`;
   const session = await getSession();
-  if (!session) redirect(loginStartHref(`/projects/${id}`));
+  if (!session) redirect(loginStartHref(returnPath));
 
   const { activeOrg, memberships } = await resolveActiveOrg(session.user.id);
 
@@ -75,6 +83,12 @@ export default async function ProjectDetailPage({
   ).size;
   const activityLines = buildProjectActivityFeed(threads);
   const recentActivity = activityLines.slice(-5).reverse();
+  const selectedThread = threadParam
+    ? (threads.find((thread) => thread.id === threadParam) ?? null)
+    : null;
+  const selectedOwnerName = selectedThread
+    ? (ownerNames[selectedThread.ownerUserId] ?? selectedThread.ownerUserId)
+    : null;
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -118,17 +132,23 @@ export default async function ProjectDetailPage({
             <p className="mt-2 text-sm text-muted">No threads yet</p>
           ) : (
             <ul className="-mx-1 mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-              {threads.map((thread) => (
-                <li key={thread.id}>
-                  <Link
-                    href={`/threads/${thread.id}`}
-                    className="block truncate rounded-md px-2 py-1.5 text-sm text-foreground transition hover:bg-black/5"
-                    title={thread.title}
-                  >
-                    {thread.title || "Untitled thread"}
-                  </Link>
-                </li>
-              ))}
+              {threads.map((thread) => {
+                const active = thread.id === selectedThread?.id;
+                return (
+                  <li key={thread.id}>
+                    <Link
+                      href={`/projects/${project.id}?thread=${thread.id}`}
+                      aria-current={active ? "page" : undefined}
+                      className={`block truncate rounded-md px-2 py-1.5 text-sm text-foreground transition ${
+                        active ? "bg-black/10" : "hover:bg-black/5"
+                      }`}
+                      title={thread.title}
+                    >
+                      {thread.title || "Untitled thread"}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -149,55 +169,92 @@ export default async function ProjectDetailPage({
           isOwner={isOwner}
         />
 
-        <main
-          className={
-            activityLines.length > 0
-              ? "flex flex-1 flex-col overflow-y-auto p-6"
-              : "flex flex-1 flex-col items-center justify-center p-6 text-center"
-          }
-        >
-          {activityLines.length > 0 ? (
-            <ProjectActivityFeed lines={activityLines} />
-          ) : (
-            <>
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-skeleton text-muted">
-                <MessageSquare
-                  aria-hidden
-                  className="h-5 w-5"
-                  strokeWidth={1.5}
-                />
-              </span>
-              <p className="mt-4 text-sm font-medium text-foreground">
-                No messages yet
+        {selectedThread ? (
+          <main className="flex min-h-0 flex-1 flex-col">
+            <div className="border-b border-border bg-surface px-6 py-4">
+              <h2 className="truncate text-lg font-semibold tracking-tight">
+                {selectedThread.title || "Untitled thread"}
+              </h2>
+              <p className="mt-1 text-xs text-muted">
+                {selectedOwnerName} · {selectedThread.lastAgentName} ·{" "}
+                {selectedThread.kind} · {selectedThread.status} · synced{" "}
+                {formatDistanceToNow(selectedThread.lastSyncedAt, {
+                  addSuffix: true,
+                })}
               </p>
-              <p className="mt-1 text-sm text-muted">
-                Add an agent and a member to start collaborating
-              </p>
-            </>
-          )}
-        </main>
+            </div>
 
-        <div className="border-t border-border bg-surface px-4 py-3">
-          <div className="mx-auto flex max-w-3xl items-end gap-2">
-            <textarea
-              rows={1}
-              disabled
-              placeholder="Send a message…"
-              className="min-h-10 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent disabled:cursor-not-allowed"
-            />
-            <button
-              type="button"
-              disabled
-              title="Add an agent and a member to start collaborating"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="mx-auto w-full max-w-3xl">
+                {selectedThread.workingState?.statusSummary ? (
+                  <div className="mb-6 rounded-xl border border-border bg-[#f4f4f5] px-4 py-3 text-sm leading-relaxed text-foreground">
+                    <p className="mb-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
+                      Summary
+                    </p>
+                    {selectedThread.workingState.statusSummary}
+                  </div>
+                ) : null}
+
+                <ThreadConversation activity={selectedThread.sourceActivity} />
+              </div>
+            </div>
+          </main>
+        ) : (
+          <>
+            <main
+              className={
+                activityLines.length > 0
+                  ? "flex flex-1 flex-col overflow-y-auto p-6"
+                  : "flex flex-1 flex-col items-center justify-center p-6 text-center"
+              }
             >
-              <Send aria-hidden className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-2 text-center text-[11px] text-muted">
-            Press Enter to send · Shift+Enter for new line
-          </p>
-        </div>
+              {activityLines.length > 0 ? (
+                <ProjectActivityFeed
+                  lines={activityLines}
+                  projectId={project.id}
+                />
+              ) : (
+                <>
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-skeleton text-muted">
+                    <MessageSquare
+                      aria-hidden
+                      className="h-5 w-5"
+                      strokeWidth={1.5}
+                    />
+                  </span>
+                  <p className="mt-4 text-sm font-medium text-foreground">
+                    No messages yet
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    Add an agent and a member to start collaborating
+                  </p>
+                </>
+              )}
+            </main>
+
+            <div className="border-t border-border bg-surface px-4 py-3">
+              <div className="mx-auto flex max-w-3xl items-end gap-2">
+                <textarea
+                  rows={1}
+                  disabled
+                  placeholder="Send a message…"
+                  className="min-h-10 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  disabled
+                  title="Add an agent and a member to start collaborating"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground transition hover:opacity-90 disabled:opacity-50"
+                >
+                  <Send aria-hidden className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-2 text-center text-[11px] text-muted">
+                Press Enter to send · Shift+Enter for new line
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Right: details */}

@@ -1,4 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 import { db } from "@/lib/db/client";
 import { agentSyncRuns } from "@/lib/db/schema";
@@ -7,13 +9,62 @@ import { PENOPTA_SYNC_AGENT_ID } from "@/lib/integrations/provider-projects-data
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 
 /**
- * Served from `public/downloads/Penopta-Sync.zip` in this repo.
- * Override with PENOPTA_SYNC_DOWNLOAD_URL (e.g. a GitHub Release asset) if needed.
+ * Served from `public/downloads/Penopta-Sync.zip` in this repo by default.
+ * Override with PENOPTA_SYNC_DOWNLOAD_URL only if the zip is hosted elsewhere.
  */
 export function getPenoptaSyncDownloadUrl(): string {
   const explicit = process.env.PENOPTA_SYNC_DOWNLOAD_URL?.trim();
   if (explicit) return explicit;
   return `${getPublicAppUrl()}/downloads/Penopta-Sync.zip`;
+}
+
+/** Soft-update manifest next to the zip (`scripts/publish-download.sh` writes it). */
+export function getPenoptaSyncManifestUrl(): string {
+  return `${getPublicAppUrl()}/downloads/Penopta-Sync.json`;
+}
+
+export type PenoptaSyncRelease = {
+  version: string;
+  build: number;
+  /** MD5 of the published .app contents; used by `npm run macos:publish`. */
+  contentMd5?: string;
+  downloadPath?: string;
+  downloadUrl?: string;
+  notes?: string;
+  publishedAt?: string;
+};
+
+/** Latest published macOS app version from `public/downloads/Penopta-Sync.json`. */
+export async function getPenoptaSyncRelease(): Promise<PenoptaSyncRelease | null> {
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "public/downloads/Penopta-Sync.json",
+    );
+    const raw = await readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<PenoptaSyncRelease>;
+    if (
+      typeof parsed.version !== "string" ||
+      !parsed.version.trim() ||
+      typeof parsed.build !== "number" ||
+      !Number.isInteger(parsed.build) ||
+      parsed.build < 1
+    ) {
+      return null;
+    }
+    return {
+      version: parsed.version.trim(),
+      build: parsed.build,
+      contentMd5:
+        typeof parsed.contentMd5 === "string" ? parsed.contentMd5 : undefined,
+      downloadPath: parsed.downloadPath,
+      downloadUrl: parsed.downloadUrl,
+      notes: parsed.notes,
+      publishedAt: parsed.publishedAt,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export const macosIntegration = {
@@ -37,6 +88,7 @@ export const macosIntegration = {
   notes: [
     "This app is not from the Mac App Store, so Gatekeeper may warn once. After you Open / Open Anyway, normal launches work.",
     "Keep Penopta Sync in the menu bar for hourly auto-sync. Turn it off under Connection → Sync every hour if you only want manual Sync.",
+    "The app checks Penopta for a newer build on launch and every few hours. Connection → Check for updates also works; Download opens the zip — replace the app after unzipping.",
     "Point the app at this Penopta URL if you are not on production: " +
       getPublicAppUrl() +
       " (Connection settings in the gear).",
