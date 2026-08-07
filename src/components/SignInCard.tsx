@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { DotGridBackground } from "@/components/DotGridBackground";
 import { authClient } from "@/lib/auth/client";
+import { postSignInHref } from "@/lib/auth/post-sign-in-url";
 
 function GoogleMark() {
   return (
@@ -66,10 +67,11 @@ export function SignInCard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [localError, setLocalError] = useState<string | null>(null);
-  const callbackURL =
+  const destination =
     returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
       ? returnTo
       : "/";
+  const afterAuthHref = postSignInHref(destination);
 
   useEffect(() => {
     if (
@@ -86,7 +88,7 @@ export function SignInCard({
           fetchOptions: {
             onSuccess() {
               startTransition(() => {
-                router.replace(callbackURL);
+                router.replace(afterAuthHref);
                 router.refresh();
               });
             },
@@ -94,13 +96,13 @@ export function SignInCard({
         });
       },
     );
-  }, [callbackURL, router]);
+  }, [afterAuthHref, router]);
 
   async function continueWithGoogle() {
     setLocalError(null);
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL,
+      callbackURL: afterAuthHref,
     });
     if (error) {
       setLocalError(error.message || "Google sign-in failed. Try again.");
@@ -113,7 +115,7 @@ export function SignInCard({
       fetchOptions: {
         onSuccess() {
           startTransition(() => {
-            router.replace(callbackURL);
+            router.replace(afterAuthHref);
             router.refresh();
           });
         },

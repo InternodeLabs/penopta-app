@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { AccountSettingsDialog } from "@/components/AccountSettingsDialog";
 import { OrgSettingsDialog } from "@/components/OrgSettingsDialog";
 import { createOrgAction, switchOrgAction } from "@/lib/orgs/actions";
 
@@ -18,7 +19,7 @@ export interface OrgSwitcherItem {
 
 /**
  * Footer control: shows the active org and, when clicked, opens an upward
- * popover to switch orgs, create one, manage the active org, open
+ * popover to switch orgs, create one, manage account / org, open
  * integrations, or sign out.
  */
 export function OrgSwitcher({
@@ -32,6 +33,7 @@ export function OrgSwitcher({
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -175,6 +177,17 @@ export function OrgSwitcher({
 
           <div className="my-1 h-px bg-border" />
 
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setAccountOpen(true);
+            }}
+            className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-background hover:text-foreground"
+          >
+            Manage account
+          </button>
+
           {active ? (
             <button
               type="button"
@@ -208,6 +221,11 @@ export function OrgSwitcher({
           </form>
         </div>
       ) : null}
+
+      <AccountSettingsDialog
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+      />
 
       {active ? (
         <OrgSettingsDialog
