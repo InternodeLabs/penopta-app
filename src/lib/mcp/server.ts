@@ -8,8 +8,10 @@ import {
   listTrackedProviderProjects,
   makeProviderProjectsAvailable,
 } from "@/lib/integrations/provider-projects-data";
-import { PROVIDER_PROJECT_PROVIDERS } from "@/lib/integrations/provider-projects";
-import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
+import {
+  PROVIDER_PROJECT_PROVIDERS,
+  type ProviderProjectProvider,
+} from "@/lib/integrations/provider-projects";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 import {
   evaluateSkillVersion,

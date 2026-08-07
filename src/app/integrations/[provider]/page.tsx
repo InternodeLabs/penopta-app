@@ -306,6 +306,10 @@ export default async function IntegrationSetupPage({
               </p>
             ) : null}
           </section>
+        ) : hasAvailableProjects && skillNeedsUpdate ? (
+          <section className="mt-8 max-w-2xl space-y-4">
+            {syncSetupInstructions}
+          </section>
         ) : hasAvailableProjects ? (
           <>
             <section className="mt-8 max-w-2xl">
