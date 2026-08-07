@@ -4,8 +4,8 @@
 #
 # Change detection: MD5 of the .app bundle contents vs `contentMd5` in the
 # last published Penopta-Sync.json. Same hash → nothing to publish.
-# When content changes, Version must differ and Build must be higher than
-# the last publish (installed apps use Build for “update available”).
+# When content changes, marketing Version must be higher than the last
+# publish. Build is scoped to that Version (it may stay the same or reset).
 #
 # Usage (from penopta-app):
 #   npm run macos:publish
@@ -66,8 +66,9 @@ $reason
 Steps:
   1. Open: $SYNC_REPO/Penopta Sync.xcodeproj
   2. Select the Penopta Sync target → General
-  3. Bump Version (Marketing) — must differ from the last published version
-  4. Bump Build (Current Project Version) higher than what’s already published
+  3. Bump Version (Marketing) — must be higher than the last published version
+  4. Set Build (Current Project Version) as you like for that Version
+     (Build may stay the same or reset; Version is what marks a newer release)
   5. Product → Build (⌘B), or Archive + Export
   6. Copy the built Penopta Sync.app into:
        $DROP_DIR/
@@ -181,7 +182,7 @@ No change detected — this .app matches the last published content.
   contentMd5: $APP_MD5
   published:  v${PUBLISHED_VERSION:-?} (build ${PUBLISHED_BUILD})
 
-Rebuild in Xcode with your changes, bump Version + Build, copy the new .app to:
+Rebuild in Xcode with your changes, bump Version, copy the new .app to:
   $DEFAULT_APP
 Then re-run:
   npm run macos:publish
@@ -189,27 +190,38 @@ EOF
   exit 1
 fi
 
-# Content changed → marketing Version must move too (not only Build).
-if [[ -n "$PUBLISHED_VERSION" && "$APP_VERSION" == "$PUBLISHED_VERSION" ]]; then
+# Content changed → marketing Version must advance. Build is per-version.
+version_is_newer() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+
+def parts(v: str):
+    out = []
+    for p in (v or "0").split("."):
+        try:
+            out.append(int(p))
+        except ValueError:
+            out.append(0)
+    return out
+
+a, b = parts(sys.argv[1]), parts(sys.argv[2])
+n = max(len(a), len(b))
+a += [0] * (n - len(a))
+b += [0] * (n - len(b))
+sys.exit(0 if a > b else 1)
+PY
+}
+
+if [[ -n "$PUBLISHED_VERSION" ]] && ! version_is_newer "$APP_VERSION" "$PUBLISHED_VERSION"; then
   print_xcode_instructions \
-    "Content changed (new md5), but Version is still the same — not right.
+    "Content changed (new md5), but Version is not higher than what’s published.
   Dropped app:       v${APP_VERSION} (build ${APP_BUILD})  md5 ${APP_MD5}
   Already published: v${PUBLISHED_VERSION} (build ${PUBLISHED_BUILD})  md5 ${PUBLISHED_MD5:-none}
 
 In Xcode → Penopta Sync target → General:
-  • Bump Version (e.g. ${PUBLISHED_VERSION} → next, like 1.2)
-  • Bump Build above ${PUBLISHED_BUILD}
+  • Bump Version above ${PUBLISHED_VERSION} (e.g. next marketing release)
+  • Build may stay the same or reset — it is scoped to that Version
 Then rebuild, copy the .app into the drop folder, and re-run npm run macos:publish."
-  exit 1
-fi
-
-if [[ "$APP_BUILD" -le "$PUBLISHED_BUILD" ]]; then
-  print_xcode_instructions \
-    "Version moved, but Build is not higher than what’s published.
-  Dropped app:       v${APP_VERSION} (build ${APP_BUILD})  md5 ${APP_MD5}
-  Already published: v${PUBLISHED_VERSION:-?} (build ${PUBLISHED_BUILD})  md5 ${PUBLISHED_MD5:-none}
-
-Bump Build above ${PUBLISHED_BUILD} in Xcode so installed apps can detect the update."
   exit 1
 fi
 
