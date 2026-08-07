@@ -1,3 +1,4 @@
+import { Plug } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -9,6 +10,7 @@ import {
   getPenoptaSyncInstallStatus,
   macosIntegration,
 } from "@/lib/integrations/macos";
+import { mcpIntegration } from "@/lib/integrations/mcp";
 import { listIntegrationProviders } from "@/lib/integrations/providers";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { listSyncedAgentNames } from "@/lib/threads/data";
@@ -111,6 +113,32 @@ export default async function IntegrationsPage() {
               className="mt-5 flex h-10 w-full items-center justify-center rounded-lg border border-border text-sm font-medium text-foreground transition hover:bg-background"
             >
               {macStatus.installed ? "Manage" : "Install"}
+            </Link>
+          </div>
+
+          <div className="flex flex-col rounded-xl border border-border bg-surface p-5">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className={`grid h-9 w-9 place-items-center rounded-full text-white ${mcpIntegration.iconBg}`}
+              >
+                <Plug className="size-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground">
+                  {mcpIntegration.name}
+                </p>
+                <p className="text-sm text-muted">{mcpIntegration.byline}</p>
+              </div>
+            </div>
+            <p className="mt-4 flex-1 text-sm leading-relaxed text-muted">
+              {mcpIntegration.description}
+            </p>
+            <Link
+              href={`/integrations/${mcpIntegration.id}`}
+              className="mt-5 flex h-10 w-full items-center justify-center rounded-lg border border-border text-sm font-medium text-foreground transition hover:bg-background"
+            >
+              View tools
             </Link>
           </div>
         </div>

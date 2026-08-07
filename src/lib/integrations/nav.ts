@@ -1,4 +1,5 @@
 import { macosIntegration } from "@/lib/integrations/macos";
+import { mcpIntegration } from "@/lib/integrations/mcp";
 import type { IntegrationProvider } from "@/lib/integrations/providers";
 
 /** Sidebar / index entry shared by MCP providers and the macOS app. */
@@ -21,6 +22,11 @@ export function listIntegrationNav(
       id: macosIntegration.id,
       name: macosIntegration.name,
       href: `/integrations/${macosIntegration.id}`,
+    },
+    {
+      id: mcpIntegration.id,
+      name: mcpIntegration.name,
+      href: `/integrations/${mcpIntegration.id}`,
     },
   ];
 }

@@ -43,6 +43,12 @@ export const agentMetaSchema = z.object({
 
 export const agentSyncPayloadSchema = z.object({
   schemaVersion: z.string().min(1),
+  /**
+   * Version of the pasteable hourly sync skill the agent is following.
+   * Optional during rollout; omit from non-skill producers (e.g. macOS app).
+   * Distinct from schemaVersion (JSON contract).
+   */
+  skillVersion: z.number().int().positive().optional(),
   agentId: z.string().min(1),
   // Optional. Identity is resolved from the Bearer key; when present this must
   // match the key owner. Agents that only hold the key can omit it.
@@ -85,6 +91,11 @@ export const trackThreadPayloadSchema = z.object({
     .min(1)
     .optional()
     .describe("Optional idempotency key. Omit to auto-generate."),
+  /**
+   * Optional. Pass when following the Penopta sync skill so Penopta can detect
+   * stale pasted instructions. Not required for ad-hoc live-chat tracking.
+   */
+  skillVersion: z.number().int().positive().optional(),
 });
 
 export type TrackThreadPayload = z.infer<typeof trackThreadPayloadSchema>;
@@ -102,6 +113,9 @@ export function toTrackThreadSyncPayload(
     input.thread.updatedAt ?? input.thread.createdAt ?? windowEnd;
   return {
     schemaVersion: "1.0",
+    ...(input.skillVersion !== undefined
+      ? { skillVersion: input.skillVersion }
+      : {}),
     agentId: TRACK_THREAD_AGENT_ID,
     runId:
       input.runId ??

@@ -102,7 +102,9 @@ agents. Auth is `Authorization: Bearer <user_api_key>`; the body field
 per-run history for facets like agent/model over time.
 
 MCP tools on `/api/mcp` share that ingest path: `sync_threads` for hourly
-windowed sync of tracked projects, and `penopta_track_thread` for an on-demand
+windowed sync of tracked projects, `penopta_sync_now` to force-start that same
+flow in live chat (returns checkpoint window + instructions; the agent still
+delivers via `sync_threads`), and `penopta_track_thread` for an on-demand
 single-thread push (live “track this chat,” including standalone threads).
 
 ### Reads

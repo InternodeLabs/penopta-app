@@ -37,8 +37,10 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
   resolved `org_id`. OAuth uses the user's **active** org at request time; API
   keys use the org stamped at mint.
 - MCP also exposes `penopta_track_thread` for on-demand single-thread pushes
-  (live “track this chat”); it wraps the same ingest path. Hourly skill delivery
-  still uses `sync_threads` for tracked projects only.
+  (live “track this chat”); it wraps the same ingest path. `penopta_sync_now`
+  force-starts a full tracked-project sync in live chat (returns window +
+  instructions; agent still delivers with `sync_threads`). Hourly skill
+  delivery still uses `sync_threads` for tracked projects only.
 
 ### Environments
 

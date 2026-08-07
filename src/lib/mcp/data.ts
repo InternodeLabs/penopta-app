@@ -1,11 +1,26 @@
-import type { ApiKeyOwner } from "@/lib/keys/data";
+import { and, desc, eq } from "drizzle-orm";
+
+import { db } from "@/lib/db/client";
 import type { AgentThreadRow, ProjectRow } from "@/lib/db/schema";
+import { agentSyncRuns } from "@/lib/db/schema";
+import { HOURLY_SYNC_AGENT_ID } from "@/lib/integrations/skill-version";
+import {
+  listTrackedProviderProjects,
+  type AvailableProviderProject,
+} from "@/lib/integrations/provider-projects-data";
+import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
+import type { ApiKeyOwner } from "@/lib/keys/data";
 import { getVisibleProject, listVisibleProjects } from "@/lib/projects/data";
 import {
   getAgentThread,
   listAgentThreads,
   listProjectThreads,
 } from "@/lib/threads/data";
+
+/** Default lookback when Penopta has no prior skill checkpoint. */
+const DEFAULT_LOOKBACK_MS = 60 * 60 * 1000;
+/** Overlap before the last checkpoint so boundary updates are not missed. */
+const CHECKPOINT_OVERLAP_MS = 5 * 60 * 1000;
 
 /** Compact project shape returned to MCP clients. */
 export type McpProject = {
@@ -221,4 +236,133 @@ export async function mcpGetThread(
 ): Promise<McpThreadDetail | null> {
   const row = await getAgentThread(owner.orgId, threadId);
   return row ? toDetail(row) : null;
+}
+
+export type McpSyncCheckpoint = {
+  checkpoint: string | null;
+  runId: string | null;
+  syncRunId: string | null;
+  agentId: string | null;
+};
+
+/**
+ * Last successful hourly skill checkpoint for this org + provider
+ * (`windowEnd` of the newest matching sync run).
+ */
+export async function mcpGetSkillCheckpoint(
+  orgId: string,
+  provider: ProviderProjectProvider,
+): Promise<McpSyncCheckpoint> {
+  const [row] = await db
+    .select({
+      id: agentSyncRuns.id,
+      runId: agentSyncRuns.runId,
+      agentId: agentSyncRuns.agentId,
+      windowEnd: agentSyncRuns.windowEnd,
+    })
+    .from(agentSyncRuns)
+    .where(
+      and(
+        eq(agentSyncRuns.orgId, orgId),
+        eq(agentSyncRuns.agentId, HOURLY_SYNC_AGENT_ID),
+        eq(agentSyncRuns.agentName, provider),
+      ),
+    )
+    .orderBy(desc(agentSyncRuns.windowEnd))
+    .limit(1);
+
+  if (!row) {
+    return {
+      checkpoint: null,
+      runId: null,
+      syncRunId: null,
+      agentId: null,
+    };
+  }
+
+  return {
+    checkpoint: row.windowEnd.toISOString(),
+    runId: row.runId,
+    syncRunId: row.id,
+    agentId: row.agentId,
+  };
+}
+
+export type McpSyncNowKickoff = {
+  ok: true;
+  force: true;
+  provider: ProviderProjectProvider;
+  checkpoint: string | null;
+  windowStart: string;
+  windowEnd: string;
+  overlapMinutes: number;
+  lookbackMinutes: number | null;
+  trackedProjects: AvailableProviderProject[];
+  instructions: string[];
+};
+
+/**
+ * Kick off an immediate (non-scheduled) sync: return the sync window, tracked
+ * projects, and step list so the agent runs discover → gather → sync_threads now.
+ */
+export async function mcpSyncNow(
+  owner: ApiKeyOwner,
+  provider: ProviderProjectProvider,
+  opts: { lookbackMinutes?: number } = {},
+  now: Date = new Date(),
+): Promise<McpSyncNowKickoff> {
+  const prior = await mcpGetSkillCheckpoint(owner.orgId, provider);
+  const trackedProjects = await listTrackedProviderProjects(
+    owner.orgId,
+    provider,
+  );
+
+  const windowEnd = now;
+  let windowStart: Date;
+  let lookbackMinutes: number | null = null;
+
+  if (
+    typeof opts.lookbackMinutes === "number" &&
+    Number.isFinite(opts.lookbackMinutes) &&
+    opts.lookbackMinutes > 0
+  ) {
+    lookbackMinutes = Math.floor(opts.lookbackMinutes);
+    windowStart = new Date(windowEnd.getTime() - lookbackMinutes * 60_000);
+  } else if (prior.checkpoint) {
+    windowStart = new Date(
+      new Date(prior.checkpoint).getTime() - CHECKPOINT_OVERLAP_MS,
+    );
+  } else {
+    lookbackMinutes = 60;
+    windowStart = new Date(windowEnd.getTime() - DEFAULT_LOOKBACK_MS);
+  }
+
+  const instructions = [
+    "Run the Penopta sync skill now (do not wait for the hourly schedule).",
+    `Use provider="${provider}".`,
+    "1. Discover: known_projects → make_projects_available for unknowns (metadata only). Skip P:/Private: names.",
+    "2. Choose: sync only projects in trackedProjects below (re-call tracked_projects if needed).",
+    "3. Gather transcripts updated in windowStart..windowEnd for those tracked projects only.",
+    "4. Deliver with sync_threads. Do not use penopta_track_thread for this bulk run.",
+    "Identity and org come from this connection — omit API keys, tokens, endpoints, and penopta_user_id.",
+  ];
+
+  if (trackedProjects.length === 0) {
+    instructions.push(
+      "No projects are tracked — still deliver an empty threads payload via sync_threads so the checkpoint advances.",
+    );
+  }
+
+  return {
+    ok: true,
+    force: true,
+    provider,
+    checkpoint: prior.checkpoint,
+    windowStart: windowStart.toISOString(),
+    windowEnd: windowEnd.toISOString(),
+    overlapMinutes: 5,
+    lookbackMinutes,
+    trackedProjects,
+    instructions,
+  };
 }

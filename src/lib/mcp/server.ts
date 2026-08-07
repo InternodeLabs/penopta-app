@@ -11,6 +11,12 @@ import {
 import { PROVIDER_PROJECT_PROVIDERS } from "@/lib/integrations/provider-projects";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 import {
+  evaluateSkillVersion,
+  HOURLY_SYNC_AGENT_ID,
+  skillVersionFieldDescription,
+  type SkillStatus,
+} from "@/lib/integrations/skill-version";
+import {
   DuplicateRunError,
   ingestAgentSync,
   isPrivateProjectName,
@@ -34,6 +40,13 @@ import { getAgentThreadByExternalId } from "@/lib/threads/data";
 
 const providerSchema = z.enum(PROVIDER_PROJECT_PROVIDERS);
 
+const skillVersionInput = z
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .describe(skillVersionFieldDescription);
+
 /** A tool result carrying JSON that the model can parse. */
 function jsonResult(value: unknown) {
   return {
@@ -52,6 +65,14 @@ function errorResult(message: string) {
 /** Public URL for a thread, used as the citation link in `fetch`. */
 function threadUrl(threadId: string): string {
   return `${getPublicAppUrl()}/threads/${threadId}`;
+}
+
+/** Attach skill freshness to sync-related tool replies. */
+function withSkill<T extends Record<string, unknown>>(
+  value: T,
+  reported: number | null | undefined,
+): T & { skill: SkillStatus } {
+  return { ...value, skill: evaluateSkillVersion(reported) };
 }
 
 /**
@@ -199,18 +220,26 @@ export function buildPenoptaMcpServer(
         "List provider projects Penopta already has in its available catalog " +
         "for chatgpt or claude. Call this during sync discovery, then push only " +
         "unknown projects via make_projects_available. Returns metadata only " +
-        "(projectId, name, createdAt, tracked, private) — no transcripts.",
+        "(projectId, name, createdAt, tracked, private) — no transcripts. " +
+        "Pass skillVersion from the pasted sync skill so Penopta can detect " +
+        "outdated schedule instructions.",
       inputSchema: z.object({
         provider: providerSchema.describe(
           'Which provider catalog to read: "chatgpt" or "claude".',
         ),
+        skillVersion: skillVersionInput,
       }),
     },
-    async ({ provider }) =>
-      jsonResult({
-        provider,
-        projects: await listKnownProviderProjects(owner.orgId, provider),
-      }),
+    async ({ provider, skillVersion }) =>
+      jsonResult(
+        withSkill(
+          {
+            provider,
+            projects: await listKnownProviderProjects(owner.orgId, provider),
+          },
+          skillVersion,
+        ),
+      ),
   );
 
   server.registerTool(
@@ -222,11 +251,13 @@ export function buildPenoptaMcpServer(
         "Send metadata only: projectId (stable provider id), name, and optional " +
         "createdAt. Do not send transcripts. Upserts by projectId; does not " +
         "change tracking. Never include projects whose names start with p: or " +
-        "private: (case-insensitive) — those are skipped and not stored.",
+        "private: (case-insensitive) — those are skipped and not stored. " +
+        "Pass skillVersion from the pasted sync skill.",
       inputSchema: z.object({
         provider: providerSchema.describe(
           'Which provider these projects come from: "chatgpt" or "claude".',
         ),
+        skillVersion: skillVersionInput,
         projects: z
           .array(
             z.object({
@@ -248,21 +279,26 @@ export function buildPenoptaMcpServer(
           .describe("Unknown projects to add or refresh in the catalog."),
       }),
     },
-    async ({ provider, projects }) => {
+    async ({ provider, skillVersion, projects }) => {
       const result = await makeProviderProjectsAvailable(
         owner.ownerUserId,
         owner.orgId,
         provider,
         projects.map((p) => ({ ...p, source: "skill" as const })),
       );
-      return jsonResult({
-        ok: true,
-        provider,
-        inserted: result.inserted,
-        updated: result.updated,
-        skippedPrivate: result.skippedPrivate,
-        projects: result.projects,
-      });
+      return jsonResult(
+        withSkill(
+          {
+            ok: true,
+            provider,
+            inserted: result.inserted,
+            updated: result.updated,
+            skippedPrivate: result.skippedPrivate,
+            projects: result.projects,
+          },
+          skillVersion,
+        ),
+      );
     },
   );
 
@@ -273,18 +309,25 @@ export function buildPenoptaMcpServer(
       description:
         "Return the provider projects the user opted to track for transcript " +
         "sync. Sync only threads that belong to these projects. Private-prefixed " +
-        "projects are never included or stored.",
+        "projects are never included or stored. Pass skillVersion from the " +
+        "pasted sync skill.",
       inputSchema: z.object({
         provider: providerSchema.describe(
           'Which provider catalog to read: "chatgpt" or "claude".',
         ),
+        skillVersion: skillVersionInput,
       }),
     },
-    async ({ provider }) =>
-      jsonResult({
-        provider,
-        projects: await listTrackedProviderProjects(owner.orgId, provider),
-      }),
+    async ({ provider, skillVersion }) =>
+      jsonResult(
+        withSkill(
+          {
+            provider,
+            projects: await listTrackedProviderProjects(owner.orgId, provider),
+          },
+          skillVersion,
+        ),
+      ),
   );
 
   server.registerTool(
@@ -296,11 +339,11 @@ export function buildPenoptaMcpServer(
         "curl/HTTP endpoint: identity and target org are taken from your " +
         "authenticated connection, so no API key or bearer token is needed and " +
         "none should be included in the payload. Send the same JSON described in " +
-        "the sync skill (schemaVersion, runId, window, agent, captureCoverage, " +
-        "threads, runSummary). Only include threads from projects returned by " +
-        "tracked_projects. Runs are idempotent by runId. On success it " +
-        "returns { ok: true, checkpoint }; save the checkpoint before the next " +
-        "run and treat any error result as a failed delivery.",
+        "the sync skill (schemaVersion, skillVersion, runId, window, agent, " +
+        "captureCoverage, threads, runSummary). Only include threads from " +
+        "projects returned by tracked_projects. Runs are idempotent by runId. " +
+        "On success it returns { ok: true, checkpoint, skill }; treat skill.compat " +
+        '"block" / error skill_outdated as a failed delivery.',
       inputSchema: agentSyncPayloadSchema,
     },
     async (payload) => {
@@ -313,6 +356,35 @@ export function buildPenoptaMcpServer(
             "identity is resolved from your connection.",
         );
       }
+
+      // Skill freshness applies to the hourly pasted skill (and any caller that
+      // reports skillVersion). macOS / other HTTP producers omit both and skip.
+      const checkSkill =
+        payload.skillVersion !== undefined ||
+        payload.agentId === HOURLY_SYNC_AGENT_ID;
+      const skill = checkSkill
+        ? evaluateSkillVersion(payload.skillVersion)
+        : null;
+      if (skill?.compat === "block") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  ok: false,
+                  error: "skill_outdated",
+                  skill,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
       try {
         const { run, threadsUpserted } = await ingestAgentSync(
           owner.ownerUserId,
@@ -338,6 +410,7 @@ export function buildPenoptaMcpServer(
           threadsUpserted,
           checkpoint,
           cursor: checkpoint,
+          ...(skill ? { skill } : {}),
         });
       } catch (err) {
         if (err instanceof DuplicateRunError) {
@@ -349,6 +422,7 @@ export function buildPenoptaMcpServer(
             duplicate: true,
             checkpoint,
             cursor: checkpoint,
+            ...(skill ? { skill } : {}),
           });
         }
         console.error("mcp sync_threads", err);
@@ -383,6 +457,30 @@ export function buildPenoptaMcpServer(
         return errorResult(
           "This thread belongs to a private-prefixed project and cannot be tracked.",
         );
+      }
+
+      const skill =
+        input.skillVersion !== undefined
+          ? evaluateSkillVersion(input.skillVersion)
+          : null;
+      if (skill?.compat === "block") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  ok: false,
+                  error: "skill_outdated",
+                  skill,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
       }
 
       const payload = toTrackThreadSyncPayload(input);
@@ -424,6 +522,7 @@ export function buildPenoptaMcpServer(
           threadId: internalId,
           title: input.thread.title,
           url: internalId ? threadUrl(internalId) : null,
+          ...(skill ? { skill } : {}),
         });
       } catch (err) {
         if (err instanceof DuplicateRunError) {
@@ -442,6 +541,7 @@ export function buildPenoptaMcpServer(
             threadId: internalId,
             title: input.thread.title,
             url: internalId ? threadUrl(internalId) : null,
+            ...(skill ? { skill } : {}),
           });
         }
         console.error("mcp penopta_track_thread", err);

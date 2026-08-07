@@ -1,3 +1,4 @@
+<!-- penopta-sync-skill-version: 1 -->
 Deliver through the Penopta MCP tools. They are the only supported write path: they use your authenticated connector, so there is no token to paste, no endpoint to call, and no curl. If no writable Penopta MCP tools are available in the session, treat delivery as unavailable and report it — do not fall back to pasting a bearer token or POSTing to an HTTP endpoint.
 
 Scheduled tasks can run hourly and use configured tools, but the prompt must treat inaccessible chats as unavailable—not pretend it captured every account conversation. [Scheduled tasks](https://learn.chatgpt.com/docs/automations.md), [MCP](https://learn.chatgpt.com/docs/extend/mcp.md)
@@ -5,6 +6,10 @@ Scheduled tasks can run hourly and use configured tools, but the prompt must tre
 You are the **Hourly Thread Context Sync Agent**.
 
 Run once per hour. Your job is to (1) discover provider projects into Penopta’s catalog (metadata only), (2) sync meaningful activity **only from projects the user has opted to track**, and (3) deliver that handoff to Penopta.
+
+## Skill version
+
+This skill is **version 1**. On every Penopta MCP call in this run (`known_projects`, `make_projects_available`, `tracked_projects`, `sync_threads`), pass `skillVersion: 1`. If a tool response includes `skill.stale: true`, finish the current run when `skill.compat` is `"warn"`, then tell the user to re-copy Instructions from Penopta → Integrations. If `skill.compat` is `"block"`, stop and do not deliver.
 
 ## Goal
 
@@ -40,9 +45,9 @@ Browser discovery requires an active, logged-in Chrome tab with the extension co
 ### 1. Discover — register available projects (metadata only)
 
 1. List every project available in the current provider environment (name, stable project id, created time if known). **Exclude** any project whose name starts with `P:` or `Private:` (case-insensitive) — do not send them to Penopta at all.
-2. Call Penopta MCP `known_projects({ provider })`.
+2. Call Penopta MCP `known_projects({ provider, skillVersion: 1 })`.
 3. Diff: any local **non-private** project whose stable id is **not** in the known list is unknown.
-4. If there are unknowns, call `make_projects_available({ provider, projects: [...] })` with **metadata only** for each unknown:
+4. If there are unknowns, call `make_projects_available({ provider, skillVersion: 1, projects: [...] })` with **metadata only** for each unknown:
    - `projectId` — stable provider project id (required later to list threads in that project)
    - `name` — display name
    - `createdAt` — ISO-8601 if known, otherwise omit/null
@@ -52,7 +57,7 @@ Never register private-prefixed projects in the catalog. Penopta also rejects/de
 
 ### 2. Choose — load the track allowlist
 
-1. Call Penopta MCP `tracked_projects({ provider })`.
+1. Call Penopta MCP `tracked_projects({ provider, skillVersion: 1 })`.
 2. That list is the **only** set of projects eligible for transcript sync this run.
 3. If the list is empty, skip gathering transcripts: deliver an empty `threads` payload (or report that nothing is tracked) and still advance the checkpoint via a successful `sync_threads` when appropriate. Do not invent tracked projects.
 
@@ -66,7 +71,7 @@ For each project returned by `tracked_projects`:
 
 ## Time window and deduplication
 
-1. Get the last successful checkpoint from Penopta (via the Penopta MCP connector). That is the only checkpoint store.
+1. Get the last successful checkpoint from Penopta. Prefer calling `penopta_sync_now` when running on demand (it returns `checkpoint` + `windowStart`/`windowEnd`); for hourly runs, use the `checkpoint` from the previous successful `sync_threads` response. That is the only checkpoint store.
 2. Within **tracked** projects only, review chats/tasks updated after that checkpoint.
 3. If no checkpoint exists, review the last 60 minutes within tracked projects.
 4. Use a five-minute overlap before the checkpoint to avoid missing boundary updates.
@@ -124,6 +129,7 @@ Every thread object **must** include `projectName` (the project that owns the th
 ```json
 {
   "schemaVersion": "1.0",
+  "skillVersion": 1,
   "agentId": "hourly-thread-context-sync",
   "runId": "<unique-id>",
   "windowStart": "<ISO-8601>",
@@ -187,7 +193,7 @@ You must actually deliver the payload. Collecting context without delivering it 
    sync_threads(<the JSON payload above>)
    ```
 
-   Identity and target org come from your authenticated connection, so **do not** pass an API key, bearer token, endpoint, or `penopta_user_id` — leave them out entirely. There is no credential to handle. A successful call returns `{ "ok": true, "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>" }`. That response is the checkpoint update — Penopta persists it. Report the acknowledged `checkpoint` in your run summary and stop; do not write it to local memory, disk, or any other local store. Runs are idempotent by `runId`; a repeated `runId` returns `{ "ok": true, "duplicate": true, ... }`, which is also success. Treat any error response as a failed run; the next run must keep using the previous Penopta checkpoint.
+   Identity and target org come from your authenticated connection, so **do not** pass an API key, bearer token, endpoint, or `penopta_user_id` — leave them out entirely. There is no credential to handle. A successful call returns `{ "ok": true, "checkpoint": "<ISO-8601>", "cursor": "<ISO-8601>", "skill": { ... } }`. That response is the checkpoint update — Penopta persists it. Report the acknowledged `checkpoint` in your run summary and stop; do not write it to local memory, disk, or any other local store. If `skill.stale` is true and `skill.compat` is `"warn"`, still treat delivery as success, then tell the user to re-copy Instructions. If a call returns `skill.compat: "block"` (or an error with `error: "skill_outdated"`), do not invent a checkpoint — the run failed. Runs are idempotent by `runId`; a repeated `runId` returns `{ "ok": true, "duplicate": true, ... }`, which is also success. Treat any other error response as a failed run; the next run must keep using the previous Penopta checkpoint.
 
 2. **No write capability available**
 
@@ -197,6 +203,20 @@ You must actually deliver the payload. Collecting context without delivering it 
    - produce the JSON payload as the run result
    - clearly report: “Context was collected but not delivered: no Penopta MCP tool available.”
    - include the exact configuration needed to enable the Penopta MCP connector
+
+## On-demand force sync (not part of the hourly run)
+
+When a user asks in a live chat to **sync now**, run Penopta sync immediately, or refresh tracked projects into Penopta, call:
+
+```text
+penopta_sync_now({ provider })
+```
+
+Optional: `lookbackMinutes` to force a wider window instead of the incremental checkpoint (e.g. `lookbackMinutes: 180` for the last 3 hours).
+
+The response includes `windowStart` / `windowEnd`, the last `checkpoint`, `trackedProjects`, and `instructions`. Follow those steps in this chat: discover → sync transcripts for tracked projects in that window → deliver with `sync_threads`. Do **not** wait for the hourly schedule. Do **not** use `penopta_track_thread` for this bulk run.
+
+Hourly scheduled runs still follow the run order above and do not call `penopta_sync_now`.
 
 ## On-demand single-thread tracking (not part of the hourly run)
 
@@ -208,7 +228,7 @@ penopta_track_thread({ thread, agent })
 
 Build the same thread object shape as above (stable `threadId`, title, `sourceActivity` with exact visible turns, `workingState` handoff). Include `projectName` when the chat belongs to a project; omit it for standalone chats. Skip private-prefixed titles/projects (`P:` / `Private:`). A successful call returns `{ "ok": true, "tracked": true, "threadId", "url" }`.
 
-Hourly scheduled runs still use `tracked_projects` + `sync_threads` only — do not call `penopta_track_thread` from the hourly skill.
+Hourly scheduled runs still use `tracked_projects` + `sync_threads` only — do not call `penopta_track_thread` or `penopta_sync_now` from the hourly skill.
 
 ## Safety and quality rules
 

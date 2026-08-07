@@ -98,9 +98,18 @@ export function mcpConnectorUrl(appUrl: string = getPublicAppUrl()): string {
  * the agent doesn't need to fetch a remote URL (some agents refuse remote
  * reads), and inlining keeps the routine fully transparent about what it does.
  */
-export function syncRoutineInstructions(skillBody: string): string {
+export function syncRoutineInstructions(
+  skillBody: string,
+  skillVersion?: number,
+): string {
+  const versionLine =
+    typeof skillVersion === "number"
+      ? `This paste is Penopta sync skill v${skillVersion}. Pass skillVersion: ${skillVersion} on every Penopta MCP call in this run.`
+      : null;
+
   return [
     "Follow the Penopta sync skill below: discover my provider projects into Penopta (metadata only via known_projects / make_projects_available), then sync transcripts only for projects returned by tracked_projects, and deliver with sync_threads. Skip standalone chats. Never register or sync projects/threads whose names start with P: or Private:. Your identity and target org come from the authenticated Penopta connector, so there is no key, token, or endpoint to configure — leave all credential fields out.",
+    ...(versionLine ? ["", versionLine] : []),
     "",
     "----- BEGIN PENOPTA SYNC SKILL -----",
     "",

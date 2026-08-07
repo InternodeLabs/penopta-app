@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AvailableProjectsPanel } from "@/components/AvailableProjectsPanel";
 import { CopyField } from "@/components/CopyField";
+import { CopyStepsButton } from "@/components/CopyStepsButton";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
 import { MacosProviderSyncCallout } from "@/components/MacosProviderSyncCallout";
 import { getSession } from "@/lib/auth/server";
@@ -24,6 +25,7 @@ import {
   VERIFY_CHAT_COMMAND,
 } from "@/lib/integrations/providers";
 import { readSyncSkill } from "@/lib/integrations/skill";
+import { SYNC_SKILL_VERSION } from "@/lib/integrations/skill-version";
 import { getLatestMcpVerification } from "@/lib/oauth/tokens";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 
@@ -84,7 +86,7 @@ export default async function IntegrationSetupPage({
       ? "ChatGPT scheduled task"
       : "Claude scheduled task";
   const skillBody = await readSyncSkill();
-  const instructions = syncRoutineInstructions(skillBody);
+  const instructions = syncRoutineInstructions(skillBody, SYNC_SKILL_VERSION);
   const mcpUrl = mcpConnectorUrl(appUrl);
 
   const hasAvailableProjects = availableProjects.length > 0;
@@ -102,11 +104,19 @@ export default async function IntegrationSetupPage({
           demand while you chat. No key to paste.
         </p>
       </div>
-      <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
-        {provider.mcpSteps.map((step) => (
-          <li key={step}>{renderStepText(step)}</li>
-        ))}
-      </ol>
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
+            Steps
+          </h3>
+          <CopyStepsButton steps={provider.mcpSteps} />
+        </div>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+          {provider.mcpSteps.map((step) => (
+            <li key={step}>{renderStepText(step)}</li>
+          ))}
+        </ol>
+      </div>
       <CopyField
         label="MCP server URL"
         value={mcpUrl}
@@ -126,9 +136,12 @@ export default async function IntegrationSetupPage({
           Optional: also push a periodic snapshot of your conversations into
           Penopta on a schedule.
         </p>
-        <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Steps
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
+            Steps
+          </h3>
+          <CopyStepsButton steps={provider.steps} />
+        </div>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-foreground">
           {provider.steps.map((step) => (
             <li key={step}>{renderStepText(step)}</li>
