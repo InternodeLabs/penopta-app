@@ -69,7 +69,8 @@ Steps:
   3. Bump Version and/or Build so the release is newer than what’s published:
        • higher Version (Build may stay/reset), or
        • same Version with a higher Build
-  4. Product → Build (⌘B), or Archive + Export
+  4. Product → Archive, then Distribute/Export (Release). Do not ship Debug —
+     Debug defaults to http://localhost:3200 instead of https://app.penopta.com.
   5. Copy the built Penopta Sync.app into:
        $DROP_DIR/
   6. Re-run:
@@ -157,6 +158,17 @@ APP_MD5="$(app_content_md5 "$APP_PATH")"
 if [[ -z "$APP_VERSION" || -z "$APP_BUILD" ]]; then
   echo "Could not read Version/Build from $PLIST" >&2
   exit 1
+fi
+
+# Refuse Debug builds: they bake in http://localhost:3200 as the default URL.
+EXECUTABLE="$APP_PATH/Contents/MacOS/Penopta Sync"
+if [[ -f "$EXECUTABLE" ]] && strings "$EXECUTABLE" 2>/dev/null | grep -qF 'http://localhost:3200'; then
+  if ! strings "$EXECUTABLE" 2>/dev/null | grep -qF 'https://app.penopta.com'; then
+    print_xcode_instructions \
+      "This looks like a Debug build (default URL is localhost, not app.penopta.com).
+Archive/Export a Release build before publishing."
+    exit 1
+  fi
 fi
 
 PUBLISHED_BUILD=0
