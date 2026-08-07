@@ -5,6 +5,7 @@ import { passkey } from "@better-auth/passkey";
 
 import { db } from "@/lib/db/client";
 import * as schema from "@/lib/db/schema";
+import { getPublicAppUrl } from "@/lib/integrations/providers";
 
 /**
  * Existing Penopta rows were keyed by Internode portal user ids. Keep those
@@ -16,19 +17,18 @@ const LEGACY_USER_IDS: Record<string, string> = {
   "balazs@internode.ai": "f049ad6b-74c3-46a4-bb67-ae3692374ee7",
 };
 
-function appBaseUrl(): string {
-  return (
-    process.env.BETTER_AUTH_URL?.trim() ||
-    process.env.APP_URL?.trim() ||
-    "http://localhost:3200"
-  ).replace(/\/+$/, "");
+/** Auth base URL — same as APP_URL unless BETTER_AUTH_URL is set explicitly. */
+function authBaseUrl(): string {
+  const override = process.env.BETTER_AUTH_URL?.trim();
+  if (override) return override.replace(/\/+$/, "");
+  return getPublicAppUrl();
 }
 
 function passkeyRpId(): string {
   const explicit = process.env.PASSKEY_RP_ID?.trim();
   if (explicit) return explicit;
   try {
-    const host = new URL(appBaseUrl()).hostname;
+    const host = new URL(authBaseUrl()).hostname;
     return host === "127.0.0.1" ? "localhost" : host;
   } catch {
     return "localhost";
@@ -40,7 +40,7 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 
 export const auth = betterAuth({
   appName: "Penopta",
-  baseURL: appBaseUrl(),
+  baseURL: authBaseUrl(),
   secret: process.env.BETTER_AUTH_SECRET || process.env.SESSION_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -84,7 +84,7 @@ export const auth = betterAuth({
     passkey({
       rpID: passkeyRpId(),
       rpName: "Penopta",
-      origin: appBaseUrl(),
+      origin: authBaseUrl(),
     }),
     nextCookies(),
   ],

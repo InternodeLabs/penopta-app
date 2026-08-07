@@ -148,8 +148,10 @@ dashboard or a one-off local env that points at Neon). Do not bake that into
 4. Sign-out via `/api/auth/logout`.
 5. Passkeys: register after sign-in (workspace header); sign in with passkey on `/`.
 
-Google Cloud redirect URI must include `{BETTER_AUTH_URL}/api/auth/callback/google`
+Google Cloud redirect URI must include `{APP_URL}/api/auth/callback/google`
 (local `http://localhost:3200/...` and the production hostname).
+`BETTER_AUTH_URL` is optional and only needed if auth must use a different origin
+than `APP_URL`.
 
 ## Project map
 

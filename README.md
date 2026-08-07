@@ -33,11 +33,11 @@ Open http://localhost:3200 — you’ll see Google / Passkey sign-in until you a
 | Variable | Required | Description |
 | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | yes | Better Auth secret (`openssl rand -base64 32`). |
-| `BETTER_AUTH_URL` | yes | Public app origin, e.g. `http://localhost:3200`. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yes (for Google) | Google OAuth web client. Redirect: `{BETTER_AUTH_URL}/api/auth/callback/google`. |
+| `APP_URL` | yes (prod) | Public app origin, e.g. `http://localhost:3200`. Auth, links, and OAuth use this. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yes (for Google) | Google OAuth web client. Redirect: `{APP_URL}/api/auth/callback/google`. |
 | `DATABASE_URL` | yes | Postgres URL. Local Docker or Neon. |
-| `APP_URL` | no | Public origin for absolute links (defaults alongside `BETTER_AUTH_URL`). |
-| `PASSKEY_RP_ID` | no | WebAuthn rpID (defaults to hostname of `BETTER_AUTH_URL`). |
+| `BETTER_AUTH_URL` | no | Override auth origin only if it must differ from `APP_URL`. |
+| `PASSKEY_RP_ID` | no | WebAuthn rpID (defaults to hostname of `APP_URL`). |
 | `DB_DRIVER` | no | Force `pg` or `neon`. Normally inferred from the host. |
 
 ## How auth works
