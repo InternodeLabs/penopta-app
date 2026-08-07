@@ -7,8 +7,8 @@ export const PROVIDER_PROJECT_SOURCE_LABEL: Record<
   ProviderProjectSource,
   string
 > = {
-  penopta_sync: "Penopta Sync",
-  skill: "Scheduled skill",
+  penopta_sync: "MacOS app",
+  skill: "Skill",
 };
 
 /** Public catalog row shape for integrations UI (no DB types). */

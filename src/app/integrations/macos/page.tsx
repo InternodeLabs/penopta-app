@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { IntegrationsShell } from "@/components/IntegrationsShell";
-import PenoptaMark from "@/components/icons/PenoptaMark";
+import Apple from "@/components/icons/Apple";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
@@ -54,7 +54,7 @@ export default async function MacosIntegrationPage() {
             aria-hidden
             className={`grid h-10 w-10 place-items-center rounded-full text-white ${macosIntegration.iconBg}`}
           >
-            <PenoptaMark className="size-5" />
+            <Apple className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">

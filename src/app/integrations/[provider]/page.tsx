@@ -6,8 +6,10 @@ import { notFound, redirect } from "next/navigation";
 import { AvailableProjectsPanel } from "@/components/AvailableProjectsPanel";
 import { CopyField } from "@/components/CopyField";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
+import { MacosProviderSyncCallout } from "@/components/MacosProviderSyncCallout";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
+import { getPenoptaSyncStatusForProvider } from "@/lib/integrations/macos";
 import { asProviderProjectProvider } from "@/lib/integrations/provider-projects";
 import {
   ensureCatalogFromAgentThreads,
@@ -68,10 +70,10 @@ export default async function IntegrationSetupPage({
     activeOrg.id,
     catalogProvider,
   );
-  const availableProjects = await listAvailableProviderProjects(
-    activeOrg.id,
-    catalogProvider,
-  );
+  const [availableProjects, macSync] = await Promise.all([
+    listAvailableProviderProjects(activeOrg.id, catalogProvider),
+    getPenoptaSyncStatusForProvider(activeOrg.id, catalogProvider),
+  ]);
 
   const ProviderIcon = provider.icon;
   const mcpVerification = await getLatestMcpVerification(session.user.id);
@@ -295,6 +297,7 @@ export default async function IntegrationSetupPage({
             </ul>
           </section>
         ) : null}
+        <MacosProviderSyncCallout syncing={macSync.installed} />
         <AvailableProjectsPanel
           providerId={provider.id}
           projects={availableProjects}
