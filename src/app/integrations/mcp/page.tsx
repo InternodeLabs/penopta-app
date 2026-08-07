@@ -24,7 +24,7 @@ export default async function McpIntegrationPage() {
 
   return (
     <IntegrationsShell providers={providers} activeProviderId="mcp">
-      <main className="mx-auto max-w-2xl px-8 py-10 sm:px-12">
+      <main className="mx-auto max-w-4xl px-8 py-10 sm:px-12">
         <Link
           href="/integrations"
           className="text-sm font-medium text-muted transition hover:text-foreground"
@@ -90,7 +90,7 @@ export default async function McpIntegrationPage() {
           </ul>
         </section>
 
-        <section className="mt-10 max-w-2xl space-y-8">
+        <section className="mt-10 max-w-4xl">
           <div>
             <h2 className="text-sm font-semibold tracking-wide text-foreground uppercase">
               MCP commands
@@ -101,36 +101,58 @@ export default async function McpIntegrationPage() {
             </p>
           </div>
 
-          {toolGroups.map((group) => (
-            <div key={group.category}>
-              <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
-                {group.label}
-              </h3>
-              <ul className="mt-3 divide-y divide-border border-t border-border">
-                {group.tools.map((tool) => (
-                  <li key={tool.name} className="py-4">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
-                        {tool.name}
-                      </code>
-                      <span className="text-sm font-medium text-foreground">
-                        {tool.title}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
-                      {tool.summary}
-                    </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                      <span className="font-medium text-foreground/70">
-                        When:
-                      </span>{" "}
-                      {tool.whenToUse}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-zinc-50/80 text-xs font-semibold tracking-wide text-muted uppercase">
+                  <th scope="col" className="px-3 py-2.5 font-semibold">
+                    Category
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">
+                    Command
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">
+                    What it does
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-semibold">
+                    When to use
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {toolGroups.flatMap((group) =>
+                  group.tools.map((tool, index) => (
+                    <tr
+                      key={tool.name}
+                      className="border-b border-border last:border-b-0 align-top"
+                    >
+                      {index === 0 ? (
+                        <th
+                          scope="row"
+                          rowSpan={group.tools.length}
+                          className="whitespace-nowrap border-r border-border bg-zinc-50/50 px-3 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
+                        >
+                          {group.label}
+                        </th>
+                      ) : null}
+                      <td className="px-3 py-3">
+                        <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                          {tool.name}
+                        </code>
+                        <div className="mt-1 text-xs text-muted">{tool.title}</div>
+                      </td>
+                      <td className="px-3 py-3 leading-relaxed text-muted">
+                        {tool.summary}
+                      </td>
+                      <td className="px-3 py-3 leading-relaxed text-muted">
+                        {tool.whenToUse}
+                      </td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
     </IntegrationsShell>
