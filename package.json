@@ -16,6 +16,7 @@
     "db:migrate:prod": "dotenv -e .env.production -- drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:seed": "dotenv -e .env.local -- tsx src/lib/db/seed.ts",
+    "auth:dump-user-map": "tsx scripts/dump-prod-user-map.ts",
     "macos:publish": "bash scripts/publish-macos-app.sh"
   },
   "dependencies": {
