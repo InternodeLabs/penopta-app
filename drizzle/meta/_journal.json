@@ -71,6 +71,13 @@
       "when": 1786068469020,
       "tag": "0009_stiff_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786071088625,
+      "tag": "0010_unique_warbird",
+      "breakpoints": true
     }
   ]
 }

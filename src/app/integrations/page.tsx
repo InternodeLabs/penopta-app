@@ -1,8 +1,8 @@
-import { Plug } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import Apple from "@/components/icons/Apple";
+import Mcp from "@/components/icons/Mcp";
 import { IntegrationsShell } from "@/components/IntegrationsShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/integrations/macos";
 import { mcpIntegration } from "@/lib/integrations/mcp";
 import { listIntegrationProviders } from "@/lib/integrations/providers";
+import { listSyncSkillSightings } from "@/lib/integrations/skill-sightings";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { listSyncedAgentNames } from "@/lib/threads/data";
 
@@ -21,9 +22,10 @@ export default async function IntegrationsPage() {
 
   const providers = listIntegrationProviders();
   const { activeOrg } = await resolveActiveOrg(session.user.id);
-  const [syncedAgents, macStatus] = await Promise.all([
+  const [syncedAgents, macStatus, skillSightings] = await Promise.all([
     listSyncedAgentNames(activeOrg.id),
     getPenoptaSyncInstallStatus(activeOrg.id),
+    listSyncSkillSightings(activeOrg.id),
   ]);
   const connectedIds = new Set(
     syncedAgents.map((name) => {
@@ -32,6 +34,9 @@ export default async function IntegrationsPage() {
       if (n === "openai") return "chatgpt";
       return n;
     }),
+  );
+  const staleSkillByProvider = new Set(
+    skillSightings.filter((s) => s.skill.stale).map((s) => s.provider),
   );
 
   return (
@@ -44,6 +49,7 @@ export default async function IntegrationsPage() {
           {providers.map((provider) => {
             const Icon = provider.icon;
             const connected = connectedIds.has(provider.id);
+            const skillStale = staleSkillByProvider.has(provider.id);
             return (
               <div
                 key={provider.id}
@@ -57,13 +63,18 @@ export default async function IntegrationsPage() {
                     <Icon className="size-5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-foreground">
                         {provider.name}
                       </p>
                       {connected ? (
                         <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
                           Connected
+                        </span>
+                      ) : null}
+                      {skillStale ? (
+                        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-amber-700">
+                          Update skill
                         </span>
                       ) : null}
                     </div>
@@ -120,9 +131,9 @@ export default async function IntegrationsPage() {
             <div className="flex items-center gap-3">
               <span
                 aria-hidden
-                className={`grid h-9 w-9 place-items-center rounded-full text-white ${mcpIntegration.iconBg}`}
+                className={`grid h-9 w-9 place-items-center rounded-full ${mcpIntegration.iconBg}`}
               >
-                <Plug className="size-5" />
+                <Mcp className="size-5" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-foreground">

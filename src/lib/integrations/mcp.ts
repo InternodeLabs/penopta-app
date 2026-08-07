@@ -37,7 +37,8 @@ export const mcpIntegration = {
   setupTitle: "Penopta MCP tools",
   intro:
     "Once Penopta is connected as an MCP server, agents can verify the link, read project and thread context, discover and sync provider projects, and push a single chat on demand. Identity and org come from the OAuth connection — no API key to paste.",
-  iconBg: "bg-zinc-800",
+  /** White well — the MCP mark is black. */
+  iconBg: "bg-white border border-border",
 };
 
 export const MCP_TOOL_CATEGORY_LABELS: Record<McpToolCategory, string> = {

@@ -9,6 +9,7 @@ import {
   makeProviderProjectsAvailable,
 } from "@/lib/integrations/provider-projects-data";
 import { PROVIDER_PROJECT_PROVIDERS } from "@/lib/integrations/provider-projects";
+import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 import {
   evaluateSkillVersion,
@@ -16,6 +17,7 @@ import {
   skillVersionFieldDescription,
   type SkillStatus,
 } from "@/lib/integrations/skill-version";
+import { recordSyncSkillSighting } from "@/lib/integrations/skill-sightings";
 import {
   DuplicateRunError,
   ingestAgentSync,
@@ -73,6 +75,19 @@ function withSkill<T extends Record<string, unknown>>(
   reported: number | null | undefined,
 ): T & { skill: SkillStatus } {
   return { ...value, skill: evaluateSkillVersion(reported) };
+}
+
+/** Persist a skill-version sighting; never fail the tool call on write errors. */
+async function rememberSkillSighting(
+  orgId: string,
+  provider: ProviderProjectProvider,
+  reported: number | null | undefined,
+): Promise<void> {
+  try {
+    await recordSyncSkillSighting(orgId, provider, reported);
+  } catch (err) {
+    console.error("mcp recordSyncSkillSighting", err);
+  }
 }
 
 /**
@@ -230,8 +245,9 @@ export function buildPenoptaMcpServer(
         skillVersion: skillVersionInput,
       }),
     },
-    async ({ provider, skillVersion }) =>
-      jsonResult(
+    async ({ provider, skillVersion }) => {
+      await rememberSkillSighting(owner.orgId, provider, skillVersion);
+      return jsonResult(
         withSkill(
           {
             provider,
@@ -239,7 +255,8 @@ export function buildPenoptaMcpServer(
           },
           skillVersion,
         ),
-      ),
+      );
+    },
   );
 
   server.registerTool(
@@ -280,6 +297,7 @@ export function buildPenoptaMcpServer(
       }),
     },
     async ({ provider, skillVersion, projects }) => {
+      await rememberSkillSighting(owner.orgId, provider, skillVersion);
       const result = await makeProviderProjectsAvailable(
         owner.ownerUserId,
         owner.orgId,
@@ -318,8 +336,9 @@ export function buildPenoptaMcpServer(
         skillVersion: skillVersionInput,
       }),
     },
-    async ({ provider, skillVersion }) =>
-      jsonResult(
+    async ({ provider, skillVersion }) => {
+      await rememberSkillSighting(owner.orgId, provider, skillVersion);
+      return jsonResult(
         withSkill(
           {
             provider,
@@ -327,7 +346,8 @@ export function buildPenoptaMcpServer(
           },
           skillVersion,
         ),
-      ),
+      );
+    },
   );
 
   server.registerTool(
@@ -365,6 +385,17 @@ export function buildPenoptaMcpServer(
       const skill = checkSkill
         ? evaluateSkillVersion(payload.skillVersion)
         : null;
+      const catalogProvider = catalogProviderForAgent({
+        agentName: payload.agent.name,
+        kind: payload.threads[0]?.kind,
+      });
+      if (checkSkill && catalogProvider) {
+        await rememberSkillSighting(
+          owner.orgId,
+          catalogProvider,
+          payload.skillVersion,
+        );
+      }
       if (skill?.compat === "block") {
         return {
           content: [
@@ -391,10 +422,6 @@ export function buildPenoptaMcpServer(
           owner.orgId,
           payload,
         );
-        const catalogProvider = catalogProviderForAgent({
-          agentName: payload.agent.name,
-          kind: payload.threads[0]?.kind,
-        });
         if (catalogProvider) {
           await ensureCatalogFromAgentThreads(
             owner.ownerUserId,

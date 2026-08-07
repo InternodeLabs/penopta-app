@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -367,6 +368,38 @@ export const availableProviderProjects = pgTable(
 
 export type AvailableProviderProjectRow =
   typeof availableProviderProjects.$inferSelect;
+
+/**
+ * Last skill-version report from a scheduled sync for an org + provider.
+ * Written whenever MCP sync tools see a skillVersion (or an hourly run that
+ * omitted it). The integrations UI re-evaluates against SYNC_SKILL_VERSION.
+ */
+export const syncSkillSightings = pgTable(
+  "sync_skill_sighting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["chatgpt", "claude"] }).notNull(),
+    /** Version the schedule reported; null means the call omitted skillVersion. */
+    lastSkillVersion: integer("last_skill_version"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("sync_skill_sighting_org_provider_uidx").on(
+      t.orgId,
+      t.provider,
+    ),
+  ],
+);
+
+export type SyncSkillSightingRow = typeof syncSkillSightings.$inferSelect;
 
 /**
  * OAuth 2.1 client registered with Penopta's MCP authorization server. Clients

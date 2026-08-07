@@ -1,8 +1,8 @@
-import { Plug } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { IntegrationsShell } from "@/components/IntegrationsShell";
+import Mcp from "@/components/icons/Mcp";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import {
@@ -35,9 +35,9 @@ export default async function McpIntegrationPage() {
         <div className="mt-6 flex items-center gap-3">
           <span
             aria-hidden
-            className={`grid h-10 w-10 place-items-center rounded-full text-white ${mcpIntegration.iconBg}`}
+            className={`grid h-10 w-10 place-items-center rounded-full ${mcpIntegration.iconBg}`}
           >
-            <Plug className="size-5" />
+            <Mcp className="size-5" />
           </span>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">

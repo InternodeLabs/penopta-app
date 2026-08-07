@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { CheckCircle2, ChevronDown, Lock } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -25,6 +25,7 @@ import {
   VERIFY_CHAT_COMMAND,
 } from "@/lib/integrations/providers";
 import { readSyncSkill } from "@/lib/integrations/skill";
+import { getSyncSkillSighting } from "@/lib/integrations/skill-sightings";
 import { SYNC_SKILL_VERSION } from "@/lib/integrations/skill-version";
 import { getLatestMcpVerification } from "@/lib/oauth/tokens";
 import { resolveActiveOrg } from "@/lib/orgs/data";
@@ -72,9 +73,10 @@ export default async function IntegrationSetupPage({
     activeOrg.id,
     catalogProvider,
   );
-  const [availableProjects, macSync] = await Promise.all([
+  const [availableProjects, macSync, skillSighting] = await Promise.all([
     listAvailableProviderProjects(activeOrg.id, catalogProvider),
     getPenoptaSyncStatusForProvider(activeOrg.id, catalogProvider),
+    getSyncSkillSighting(activeOrg.id, catalogProvider),
   ]);
 
   const ProviderIcon = provider.icon;
@@ -90,6 +92,13 @@ export default async function IntegrationSetupPage({
   const mcpUrl = mcpConnectorUrl(appUrl);
 
   const hasAvailableProjects = availableProjects.length > 0;
+  const skillNeedsUpdate = Boolean(
+    skillSighting && skillSighting.skill.stale,
+  );
+  const skillVersionLabel =
+    skillSighting?.lastSkillVersion != null
+      ? `v${skillSighting.lastSkillVersion}`
+      : "an unknown version";
 
   /** Shown expanded before verification, and behind a disclosure after. */
   const mcpSetupInstructions = (
@@ -199,6 +208,31 @@ export default async function IntegrationSetupPage({
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
           {provider.intro}
         </p>
+
+        {skillNeedsUpdate && skillSighting ? (
+          <section className="mt-6 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+            <div className="flex items-start gap-2">
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0 text-amber-700"
+                aria-hidden
+              />
+              <div className="min-w-0 text-sm leading-relaxed">
+                <p className="font-medium">
+                  Scheduled sync skill is out of date
+                </p>
+                <p className="mt-1 text-amber-900/80">
+                  Last sync reported {skillVersionLabel}; current is v
+                  {SYNC_SKILL_VERSION}
+                  {skillSighting.lastSeenAt
+                    ? ` · seen ${formatDistanceToNow(skillSighting.lastSeenAt, { addSuffix: true })}`
+                    : ""}
+                  . Re-copy the Instructions below into your {target}, then run
+                  it once.
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {mcpVerified && mcpVerification ? (
           <section className="mt-8 max-w-2xl">
