@@ -1,3 +1,4 @@
+import { CheckCircle2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -5,12 +6,28 @@ import { IntegrationsShell } from "@/components/IntegrationsShell";
 import Mcp from "@/components/icons/Mcp";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
+import { getPenoptaSyncInstallStatus } from "@/lib/integrations/macos";
 import {
   listMcpSetupLinks,
   listMcpToolsByCategory,
   mcpIntegration,
 } from "@/lib/integrations/mcp";
 import { listIntegrationProviders } from "@/lib/integrations/providers";
+import { getLatestMcpVerification } from "@/lib/oauth/tokens";
+import { resolveActiveOrg } from "@/lib/orgs/data";
+import { listSyncedAgentNames } from "@/lib/threads/data";
+
+/** Map agent / sync names onto Claude or ChatGPT integration cards. */
+function providerIdFromAgentName(
+  name: string | null | undefined,
+): string | null {
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  if (n === "claude" || n === "claude-code" || n === "anthropic")
+    return "claude";
+  if (n === "chatgpt" || n === "openai" || n === "codex") return "chatgpt";
+  return null;
+}
 
 export default async function McpIntegrationPage() {
   const session = await getSession();
@@ -21,10 +38,31 @@ export default async function McpIntegrationPage() {
   const providers = listIntegrationProviders();
   const setupLinks = listMcpSetupLinks();
   const toolGroups = listMcpToolsByCategory();
+  const { activeOrg } = await resolveActiveOrg(session.user.id);
+  const [syncedAgents, macStatus, mcpVerification] = await Promise.all([
+    listSyncedAgentNames(activeOrg.id),
+    getPenoptaSyncInstallStatus(activeOrg.id),
+    getLatestMcpVerification(session.user.id),
+  ]);
+
+  const activeIds = new Set<string>();
+  if (macStatus.installed) activeIds.add("macos");
+  for (const name of syncedAgents) {
+    const id = providerIdFromAgentName(name);
+    if (id) activeIds.add(id);
+  }
+  const verifiedProvider = providerIdFromAgentName(mcpVerification?.agent);
+  if (verifiedProvider) activeIds.add(verifiedProvider);
+  // Any successful verify_penopta counts as MCP proven; attribute to both
+  // chat providers only when the agent field was omitted.
+  if (mcpVerification && !mcpVerification.agent) {
+    activeIds.add("claude");
+    activeIds.add("chatgpt");
+  }
 
   return (
     <IntegrationsShell providers={providers} activeProviderId="mcp">
-      <main className="mx-auto max-w-4xl px-8 py-10 sm:px-12">
+      <main className="mx-auto max-w-3xl px-8 py-10 sm:px-12">
         <Link
           href="/integrations"
           className="text-sm font-medium text-muted transition hover:text-foreground"
@@ -62,6 +100,7 @@ export default async function McpIntegrationPage() {
           <ul className="mt-4 space-y-2">
             {setupLinks.map((link) => {
               const Icon = link.icon;
+              const active = activeIds.has(link.id);
               return (
                 <li key={link.id}>
                   <Link
@@ -75,14 +114,31 @@ export default async function McpIntegrationPage() {
                       <Icon className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="font-medium">{link.label}</span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{link.label}</span>
+                        {active ? (
+                          <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                            {link.id === "macos" ? "Installed" : "Connected"}
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="mt-0.5 block text-xs text-muted">
                         {link.byline}
                       </span>
                     </span>
-                    <span className="shrink-0 text-muted" aria-hidden>
-                      →
-                    </span>
+                    {active ? (
+                      <CheckCircle2
+                        className="size-5 shrink-0 text-emerald-600"
+                        aria-label={
+                          link.id === "macos" ? "Installed" : "Connected"
+                        }
+                      />
+                    ) : (
+                      <ChevronRight
+                        className="size-5 shrink-0 text-muted"
+                        aria-hidden
+                      />
+                    )}
                   </Link>
                 </li>
               );
@@ -96,18 +152,15 @@ export default async function McpIntegrationPage() {
               MCP commands
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Tools exposed by the Penopta MCP server. Agents call these by
-              name after you connect.
+              Tools exposed by the Penopta MCP server. Agents call these by name
+              after you connect.
             </p>
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-zinc-50/80 text-xs font-semibold tracking-wide text-muted uppercase">
-                  <th scope="col" className="px-3 py-2.5 font-semibold">
-                    Category
-                  </th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">
                     Command
                   </th>
@@ -120,26 +173,28 @@ export default async function McpIntegrationPage() {
                 </tr>
               </thead>
               <tbody>
-                {toolGroups.flatMap((group) =>
-                  group.tools.map((tool, index) => (
+                {toolGroups.flatMap((group) => [
+                  <tr key={`${group.category}-header`} className="border-b border-border">
+                    <th
+                      scope="colgroup"
+                      colSpan={3}
+                      className="bg-zinc-50/80 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase"
+                    >
+                      {group.label}
+                    </th>
+                  </tr>,
+                  ...group.tools.map((tool) => (
                     <tr
                       key={tool.name}
                       className="border-b border-border last:border-b-0 align-top"
                     >
-                      {index === 0 ? (
-                        <th
-                          scope="row"
-                          rowSpan={group.tools.length}
-                          className="whitespace-nowrap border-r border-border bg-zinc-50/50 px-3 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
-                        >
-                          {group.label}
-                        </th>
-                      ) : null}
                       <td className="px-3 py-3">
                         <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
                           {tool.name}
                         </code>
-                        <div className="mt-1 text-xs text-muted">{tool.title}</div>
+                        <div className="mt-1 text-xs text-muted">
+                          {tool.title}
+                        </div>
                       </td>
                       <td className="px-3 py-3 leading-relaxed text-muted">
                         {tool.summary}
@@ -149,7 +204,7 @@ export default async function McpIntegrationPage() {
                       </td>
                     </tr>
                   )),
-                )}
+                ])}
               </tbody>
             </table>
           </div>
