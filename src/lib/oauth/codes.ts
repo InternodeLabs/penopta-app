@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { codeChallengeS256, randomToken } from "@/lib/auth/pkce";
+import { codeChallengeS256, randomToken } from "@/lib/oauth/pkce";
 import { db } from "@/lib/db/client";
 import {
   oauthAuthorizationCodes,

@@ -1,11 +1,8 @@
 # Penopta
 
-A Vercel-ready Next.js (App Router) app. Authentication is delegated to the
-central **portal-frontend** (`internode`) auth authority — Penopta is a
-*consumer*, exactly like Skillbase, the Chrome extension, and the iOS app. It
-does not run its own identity provider.
+A Vercel-ready Next.js (App Router) app. Authentication is **Better Auth**
+(Google + Passkey). Organizations and product data live in Postgres.
 
-Data lives in Postgres (Docker locally, Neon in production) via Drizzle ORM.
 See [`docs/architecture.md`](docs/architecture.md) for the schema and env split;
 [`AGENTS.md`](AGENTS.md) for agent-facing rules.
 
@@ -14,6 +11,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the schema and env split;
 - Next.js 16 (App Router) + React 19
 - TypeScript
 - Tailwind CSS v4
+- Better Auth (Google OAuth + Passkeys)
 - Postgres + Drizzle ORM (`pg` locally, Neon serverless on Vercel)
 - Deployable to Vercel with Neon for production data
 
@@ -25,78 +23,51 @@ cp .env.example .env.local   # then fill in the values
 npm run db:up                # start local Postgres (Docker, port 5434)
 npm run db:migrate
 npm run db:seed
-npm run dev -- -p 3200       # 3200 if the portal owns 3000 / skillbase owns 3100
+npm run dev -- -p 3200
 ```
 
-Open http://localhost:3200 — you’ll see the sign-in page until you authenticate
-via Internode.
-
-> If the portal runs locally on port 3000, keep Penopta on 3200 and set
-> `PORTAL_BASE_URL=http://localhost:3000`.
+Open http://localhost:3200 — you’ll see Google / Passkey sign-in until you authenticate.
 
 ## Environment variables
 
-| Variable          | Required | Description |
-| ----------------- | -------- | ----------- |
-| `PORTAL_BASE_URL` | yes      | Base URL of the portal central auth authority. |
-| `SESSION_SECRET`  | yes      | Secret to sign the local session cookie (`openssl rand -base64 32`). |
-| `DATABASE_URL`    | yes      | Postgres URL. Local: Docker (`…@localhost:5434/penopta`). Prod: Neon (set by Vercel). |
-| `APP_URL`         | no       | Force this app's public origin for the OAuth `redirect_uri`. |
-| `DB_DRIVER`       | no       | Force `pg` or `neon`. Normally inferred from the host. |
+| Variable | Required | Description |
+| --- | --- | --- |
+| `BETTER_AUTH_SECRET` | yes | Better Auth secret (`openssl rand -base64 32`). |
+| `BETTER_AUTH_URL` | yes | Public app origin, e.g. `http://localhost:3200`. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yes (for Google) | Google OAuth web client. Redirect: `{BETTER_AUTH_URL}/api/auth/callback/google`. |
+| `DATABASE_URL` | yes | Postgres URL. Local Docker or Neon. |
+| `APP_URL` | no | Public origin for absolute links (defaults alongside `BETTER_AUTH_URL`). |
+| `PASSKEY_RP_ID` | no | WebAuthn rpID (defaults to hostname of `BETTER_AUTH_URL`). |
+| `DB_DRIVER` | no | Force `pg` or `neon`. Normally inferred from the host. |
 
-Local day-to-day work uses `.env.local` + Docker. Production uses Vercel’s
-Production env only (no Preview/stage DB for now). Neon may inject many extra
-`DATABASE_*` aliases — the app only needs `DATABASE_URL`.
+## How auth works
 
-## How auth works (web PKCE flow)
+1. Sign-in UI on `/` calls Better Auth (`/api/auth/*`) for Google OAuth or Passkey.
+2. Sessions are Better Auth cookies; `getSession()` reads them on the server.
+3. First Google sign-in for a known legacy email keeps the old Internode user UUID
+   so existing org/project rows still match (`LEGACY_USER_IDS` in `src/lib/auth/auth.ts`).
+4. After sign-in, use **Add a passkey** in the workspace header to register a passkey
+   for next time.
+5. `GET|POST /api/auth/logout` signs out and returns to `/`.
 
-Penopta mirrors Skillbase / the Chrome extension's PKCE flow, adapted for the web:
-
-1. `GET /api/auth/login` — generates a PKCE `code_verifier` + `state`, stores them
-   in short-lived httpOnly cookies, and redirects to
-   `PORTAL_BASE_URL/api/auth/web/start` with `redirect_uri`, `state`,
-   `code_challenge`, and `code_challenge_method=S256`.
-2. The **portal** authenticates the user via its own NextAuth session (redirecting
-   to `/signin` if needed), mints a one-time auth code bound to the challenge, and
-   redirects back to `redirect_uri` with `?code=&state=`.
-3. `GET /api/auth/callback` — validates `state`, then POSTs
-   `{ code, codeVerifier, redirectUri }` to `PORTAL_BASE_URL/api/auth/web/exchange`
-   and receives `{ apiToken, expiresAt, user }`.
-4. The `apiToken` + user are stored in a signed, httpOnly session cookie. Use it as
-   `Authorization: Bearer <apiToken>` for portal API calls.
-5. The app is login-required. `/` is the sign-in page when logged out; project
-   routes redirect to sign-in without a session.
-6. `GET|POST /api/auth/logout` clears the session and returns to `/`.
-
-### Portal-side integration required
-
-The portal must expose a **web** redirect flow (allowlisted origins):
-
-- **`GET /api/auth/web/start`** — query: `redirect_uri`, `state`, `code_challenge`,
-  `code_challenge_method=S256`; requires a portal session.
-- **`POST /api/auth/web/exchange`** — body `{ code, codeVerifier, redirectUri }` →
-  `{ apiToken, expiresAt, user }`.
-- An env-driven **redirect URI allowlist**, e.g.
-  `WEB_APP_ALLOWED_REDIRECT_URIS=https://penopta.example.com/api/auth/callback,http://localhost:3200/api/auth/callback`.
+GitHub / Apple can be wired later via Better Auth `socialProviders`.
 
 ## Project structure
 
 ```
 src/
   app/
-    api/auth/{login,callback,logout}/route.ts  # web PKCE flow
-    login/page.tsx                             # forwards auth errors to `/`
-    authenticating/page.tsx                    # brief pause before PKCE
-    page.tsx                                   # sign-in / logged-in workspace
-    integrations/page.tsx                      # connect agents (auth required)
-    projects/[id]/page.tsx                     # project detail (auth required)
-  components/                                  # SignInCard, WorkspaceEmpty, Brand, …
-  lib/auth/                                    # config, pkce, session, server helpers
-  lib/db/                                      # Drizzle client, schema, seed
-  lib/projects/data.ts                         # visibility-aware project reads
-docker-compose.yml                             # local Postgres on 5434
-drizzle/                                       # migrations
-docs/architecture.md                           # schema, env split
+    api/auth/[...all]/route.ts     # Better Auth handler
+    api/auth/logout/route.ts       # sign-out convenience
+    page.tsx                       # sign-in / logged-in workspace
+    integrations/page.tsx
+    projects/[id]/page.tsx
+  components/                      # SignInCard, WorkspaceEmpty, …
+  lib/auth/                        # Better Auth server + client + session
+  lib/db/                          # Drizzle client, schema (incl. auth tables), seed
+docker-compose.yml
+drizzle/
+docs/architecture.md
 ```
 
 ## Data

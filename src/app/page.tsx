@@ -8,11 +8,9 @@ import { listAgentThreads } from "@/lib/threads/data";
 import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  invalid_state: "Your sign-in session expired. Please try again.",
-  missing_verifier: "Your sign-in session expired. Please try again.",
-  exchange_failed: "The portal rejected the sign-in. Please try again.",
-  exchange_unreachable: "Couldn't reach the auth service. Please try again.",
-  invalid_exchange_response: "Unexpected response from the auth service.",
+  access_denied: "Sign-in was cancelled. Please try again.",
+  unable_to_create_user: "Couldn't create your account. Please try again.",
+  unable_to_link_account: "Couldn't link that sign-in method. Please try again.",
 };
 
 export default async function HomePage({

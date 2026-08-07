@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, isNotNull, isNull } from "drizzle-orm";
 
-import { randomToken } from "@/lib/auth/pkce";
+import { randomToken } from "@/lib/oauth/pkce";
 import { db } from "@/lib/db/client";
 import { oauthTokens, type OAuthTokenRow } from "@/lib/db/schema";
 import { resolveActiveOrg } from "@/lib/orgs/data";

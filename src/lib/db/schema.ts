@@ -10,17 +10,26 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+/** Re-export Better Auth tables so drizzle-kit / the db client see one schema. */
+export {
+  account,
+  passkey,
+  session,
+  user,
+  verification,
+  type AuthUserRow,
+} from "./auth-schema";
+
 /**
  * An `organization` groups owned entities (projects, keys, agent data) and the
- * members allowed to see them. Penopta owns this layer locally — membership
- * still references portal user ids (Penopta is not an identity provider).
+ * members allowed to see them. Membership references Better Auth `user.id`.
  * A `personal` org is auto-created for every user so ownership always resolves.
  */
 export const organizations = pgTable("organization", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
-  /** Portal user id of whoever created the org. */
+  /** Auth user id of whoever created the org. */
   createdByUserId: text("created_by_user_id").notNull(),
   /** Auto-created single-member org for a user; not deletable in the UI. */
   isPersonal: boolean("is_personal").notNull().default(false),
@@ -34,7 +43,7 @@ export const organizations = pgTable("organization", {
 
 export type OrganizationRow = typeof organizations.$inferSelect;
 
-/** Membership of a portal user in an organization, with a coarse role. */
+/** Membership of an auth user in an organization, with a coarse role. */
 export const organizationMemberships = pgTable(
   "organization_membership",
   {
@@ -42,7 +51,7 @@ export const organizationMemberships = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    /** Portal user id of the member. */
+    /** Auth user id of the member. */
     userId: text("user_id").notNull(),
     role: text("role", { enum: ["owner", "member"] })
       .notNull()
@@ -62,7 +71,7 @@ export type OrganizationMembershipRow =
 
 /** The org a user is currently acting in (one active org at a time). */
 export const userActiveOrgs = pgTable("user_active_org", {
-  /** Portal user id. */
+  /** Auth user id. */
   userId: text("user_id").primaryKey(),
   orgId: uuid("org_id")
     .notNull()
@@ -76,7 +85,7 @@ export type UserActiveOrgRow = typeof userActiveOrgs.$inferSelect;
 
 /**
  * A `project` is the basic owned entity in Penopta. Scoped to an organization;
- * `owner_user_id` records the portal user who created it (for attribution).
+ * `owner_user_id` records the auth user who created it (for attribution).
  */
 export const projects = pgTable("project", {
   id: uuid("id").primaryKey().defaultRandom(),

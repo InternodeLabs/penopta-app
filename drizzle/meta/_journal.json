@@ -78,6 +78,13 @@
       "when": 1786071088625,
       "tag": "0010_unique_warbird",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786126715438,
+      "tag": "0011_rapid_joystick",
+      "breakpoints": true
     }
   ]
 }

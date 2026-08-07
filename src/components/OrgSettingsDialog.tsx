@@ -237,8 +237,8 @@ export function OrgSettingsDialog({
                 Invite
               </p>
               <p className="mt-1 text-xs text-muted">
-                They need a portal account. We&apos;ll email them when they&apos;re
-                added.
+                They need a Penopta account (sign in once). We&apos;ll email them
+                when they&apos;re added.
               </p>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <input

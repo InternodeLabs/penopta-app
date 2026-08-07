@@ -26,7 +26,7 @@ export async function sendOrgInviteEmail({
     "",
     `Open Penopta: ${appUrl}`,
     "",
-    "Sign in with the same portal account this invite was sent to.",
+    "Sign in with the same Penopta account this invite was sent to.",
   ].join("\n");
 
   const html = `
@@ -36,7 +36,7 @@ export async function sendOrgInviteEmail({
           <strong>${escapeHtml(orgName)}</strong> on Penopta.</p>
         <p><a href="${escapeHtml(appUrl)}">Open Penopta</a></p>
         <p style="color: #666; font-size: 13px;">
-          Sign in with the same portal account this invite was sent to.
+          Sign in with the same Penopta account this invite was sent to.
         </p>
       </body>
     </html>

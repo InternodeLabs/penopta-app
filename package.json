@@ -21,8 +21,10 @@
   },
   "dependencies": {
     "@azure/communication-email": "^1.1.0",
+    "@better-auth/passkey": "^1.6.26",
     "@modelcontextprotocol/server": "^2.0.0",
     "@neondatabase/serverless": "^1.1.0",
+    "better-auth": "^1.6.26",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.27.0",

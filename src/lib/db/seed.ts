@@ -58,7 +58,7 @@ async function main() {
     slug,
     name: "Welcome to Penopta",
     summary:
-      "A starter project proving Postgres + Drizzle + Internode auth are wired.",
+      "A starter project proving Postgres + Drizzle + Better Auth are wired.",
     orgId,
     ownerUserId: SEED_OWNER,
     visibility: "public",

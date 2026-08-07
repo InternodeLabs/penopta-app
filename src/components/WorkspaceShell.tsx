@@ -58,8 +58,7 @@ export function WorkspaceShell({
                 title: thread.title,
                 lastAgentName: thread.lastAgentName,
                 status: thread.status,
-                ownerName:
-                  ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
+                ownerName: ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
                 ownerUserId: thread.ownerUserId,
               }))}
           />
@@ -147,14 +146,6 @@ export function WorkspaceShell({
           <span className="truncate text-sm text-muted" title={user.email}>
             {user.name || user.email}
           </span>
-          <form action="/api/auth/logout" method="post">
-            <button
-              type="submit"
-              className="rounded-md border border-border px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:bg-background"
-            >
-              Sign out
-            </button>
-          </form>
         </header>
 
         {children}

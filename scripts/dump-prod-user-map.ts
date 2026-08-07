@@ -95,20 +95,20 @@ async function main() {
 
   const sql = neon(penoptaUrl);
 
-  const [orgs, memberships, active, ownerRows] = await Promise.all([
+  const [orgs, memberships, active, ownerRows] = (await Promise.all([
     sql`
       SELECT id, slug, name, created_by_user_id, is_personal
       FROM organization
       ORDER BY created_at
-    ` as Promise<OrgRow[]>,
+    `,
     sql`
       SELECT user_id, org_id, role
       FROM organization_membership
       ORDER BY user_id, org_id
-    ` as Promise<MembershipRow[]>,
+    `,
     sql`
       SELECT user_id, org_id FROM user_active_org
-    ` as Promise<ActiveRow[]>,
+    `,
     sql`
       SELECT DISTINCT owner_user_id AS user_id FROM (
         SELECT owner_user_id FROM project
@@ -118,8 +118,8 @@ async function main() {
         UNION SELECT user_id AS owner_user_id FROM oauth_token
       ) t
       ORDER BY 1
-    ` as Promise<{ user_id: string }[]>,
-  ]);
+    `,
+  ])) as [OrgRow[], MembershipRow[], ActiveRow[], { user_id: string }[]];
 
   const userIds = [
     ...new Set([

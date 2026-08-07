@@ -1,17 +1,16 @@
 # Architecture
 
-Penopta is a Next.js App Router app. Auth is delegated to Internode. App data
-lives in Postgres via Drizzle (not a specialized versioned database).
+Penopta is a Next.js App Router app. Auth is **Better Auth** (Google + Passkey).
+App data lives in Postgres via Drizzle.
 
-This architecture intentionally mirrors Skillbase: same portal PKCE consumer
-pattern, same local Docker / prod Neon split, same Drizzle driver selection.
+Local Docker / prod Neon split and Drizzle driver selection stay the same as before.
 
 ## Schema
 
-Organizations are the ownership layer. Penopta owns them locally (it is not an
-identity provider), so membership still references portal user ids. Every user
-gets an auto-created **personal** org, and acts in exactly one **active** org at
-a time. All owned rows carry `org_id`; `owner_user_id` stays for attribution.
+Organizations are the ownership layer. Membership references Better Auth user
+ids. Every user gets an auto-created **personal** org, and acts in exactly one
+**active** org at a time. All owned rows carry `org_id`; `owner_user_id` stays
+for attribution.
 
 ```
 organization
@@ -19,7 +18,7 @@ organization
 id (uuid)
 slug (unique)
 name
-created_by_user_id (portal id)
+created_by_user_id (auth user id)
 is_personal (bool)   # auto-created single-member org
 created_at / updated_at
 
@@ -27,13 +26,13 @@ organization_membership
 ───────────────────────
 id (uuid)
 org_id → organization.id (cascade)
-user_id (portal id)
+user_id (auth user id)
 role: owner | member
 unique (org_id, user_id)
 
 user_active_org
 ───────────────
-user_id (portal id, PK)   # one active org at a time
+user_id (auth user id, PK)   # one active org at a time
 org_id → organization.id (cascade)
 updated_at
 
@@ -44,7 +43,7 @@ slug (unique)
 name
 summary
 org_id (→ organization.id)
-owner_user_id (portal id)
+owner_user_id (auth user id)
 visibility: public | private
 created_at
 updated_at
@@ -53,7 +52,7 @@ user_api_key
 ───────────
 id (uuid)
 org_id (→ organization.id)   # key syncs into this org
-owner_user_id (portal id)
+owner_user_id (auth user id)
 key (unique opaque secret)
 expires_at
 created_at
@@ -62,7 +61,7 @@ agent_sync_run
 ──────────────
 id (uuid)
 org_id (→ organization.id)
-owner_user_id (portal id)
+owner_user_id (auth user id)
 schema_version, agent_id, run_id
 window_start / window_end
 agent_name / agent_model / agent_effort
@@ -141,37 +140,33 @@ Production migrate/seed: run once against the Neon `DATABASE_URL` (e.g. from the
 dashboard or a one-off local env that points at Neon). Do not bake that into
 `.env.local`.
 
-## Auth (web PKCE)
+## Auth (Better Auth)
 
-Same flow as Skillbase:
+1. `/` shows Google + Passkey when logged out.
+2. Better Auth handler at `/api/auth/[...all]` (OAuth callback, passkey, session).
+3. `getSession()` reads the Better Auth session cookie on the server.
+4. Sign-out via `/api/auth/logout`.
+5. Passkeys: register after sign-in (workspace header); sign in with passkey on `/`.
 
-1. `GET /api/auth/login` — stash verifier/state cookies, redirect to portal
-   `/api/auth/web/start`.
-2. Portal signs the user in, redirects back with `?code=&state=`.
-3. `GET /api/auth/callback` — exchange code for `{ apiToken, expiresAt, user }`,
-   store in a signed httpOnly session cookie.
-4. `/` is sign-in when logged out. Continue CTAs go to `/authenticating?returnTo=…`,
-   which pauses briefly then continues to `/api/auth/login?returnTo=…`. `/login`
-   only forwards callback errors onto `/?error=…`.
-
-Portal allowlist must include this app’s callback origin (local `3200` and the
-production hostname).
+Google Cloud redirect URI must include `{BETTER_AUTH_URL}/api/auth/callback/google`
+(local `http://localhost:3200/...` and the production hostname).
 
 ## Project map
 
 ```
 src/
   app/
-    api/auth/{login,callback,logout}/route.ts
+    api/auth/[...all]/route.ts
+    api/auth/logout/route.ts
     api/v1/agent-sync/route.ts     # Bearer-key agent thread ingest
     login/page.tsx                 # forwards auth errors to `/?error=`
-    authenticating/page.tsx        # brief pause before PKCE login
+    authenticating/page.tsx        # redirects to `/` sign-in
     page.tsx                       # sign-in (logged out) / workspace (logged in)
     integrations/page.tsx          # connect agents (auth required)
     projects/[id]/page.tsx         # project detail (auth required)
   lib/
-    auth/                          # session, PKCE, portal config
-    db/                            # client, schema, seed
+    auth/                          # Better Auth config, session, local user directory
+    db/                            # client, schema (app + auth tables), seed
     keys/                          # user API key mint / resolve
     ingest/                        # agent-sync validate + persist
     projects/data.ts               # visibility-aware reads

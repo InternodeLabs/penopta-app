@@ -1,20 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { headers } from "next/headers";
 
-import { SESSION_COOKIE } from "@/lib/auth/config";
+import { auth } from "@/lib/auth/auth";
 
-function clearAndRedirect(request: NextRequest) {
-  const response = NextResponse.redirect(
-    new URL("/", request.nextUrl.origin).toString(),
-  );
-  response.cookies.delete(SESSION_COOKIE);
-  return response;
+async function signOutAndRedirect(request: NextRequest) {
+  await auth.api.signOut({
+    headers: await headers(),
+  });
+  return NextResponse.redirect(new URL("/", request.nextUrl.origin).toString());
 }
 
 export async function POST(request: NextRequest) {
-  return clearAndRedirect(request);
+  return signOutAndRedirect(request);
 }
 
-// Allow GET for a simple link-based logout too.
 export async function GET(request: NextRequest) {
-  return clearAndRedirect(request);
+  return signOutAndRedirect(request);
 }

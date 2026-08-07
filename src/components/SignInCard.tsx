@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 
 import { DotGridBackground } from "@/components/DotGridBackground";
-import { loginStartHref } from "@/lib/auth/urls";
+import { authClient } from "@/lib/auth/client";
 
 function GoogleMark() {
   return (
@@ -28,20 +29,32 @@ function GoogleMark() {
   );
 }
 
-function MicrosoftMark() {
+function PasskeyMark() {
   return (
-    <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5">
-      <path fill="#F25022" d="M2 2h9.5v9.5H2z" />
-      <path fill="#7FBA00" d="M12.5 2H22v9.5h-9.5z" />
-      <path fill="#00A4EF" d="M2 12.5h9.5V22H2z" />
-      <path fill="#FFB900" d="M12.5 12.5H22V22h-9.5z" />
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 5.25a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 19.5a7.5 7.5 0 0 1 15 0"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 12.75v3.75m0 0 1.5 1.5M12 16.5l-1.5 1.5"
+      />
     </svg>
   );
 }
 
 /**
- * Logged-out home. Visual match for the Penopta sign-in mockup; all Continue
- * actions hand off to Internode via `/authenticating` (no local IdP).
+ * Logged-out home. Google OAuth + passkey via Better Auth.
  */
 export function SignInCard({
   returnTo,
@@ -50,7 +63,71 @@ export function SignInCard({
   returnTo?: string;
   errorMessage?: string | null;
 }) {
-  const href = loginStartHref(returnTo);
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [localError, setLocalError] = useState<string | null>(null);
+  const callbackURL =
+    returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : "/";
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !window.PublicKeyCredential?.isConditionalMediationAvailable
+    ) {
+      return;
+    }
+    void PublicKeyCredential.isConditionalMediationAvailable().then(
+      (available) => {
+        if (!available) return;
+        void authClient.signIn.passkey({
+          autoFill: true,
+          fetchOptions: {
+            onSuccess() {
+              startTransition(() => {
+                router.replace(callbackURL);
+                router.refresh();
+              });
+            },
+          },
+        });
+      },
+    );
+  }, [callbackURL, router]);
+
+  async function continueWithGoogle() {
+    setLocalError(null);
+    const { error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL,
+    });
+    if (error) {
+      setLocalError(error.message || "Google sign-in failed. Try again.");
+    }
+  }
+
+  async function continueWithPasskey() {
+    setLocalError(null);
+    const { error } = await authClient.signIn.passkey({
+      fetchOptions: {
+        onSuccess() {
+          startTransition(() => {
+            router.replace(callbackURL);
+            router.refresh();
+          });
+        },
+      },
+    });
+    if (error) {
+      setLocalError(
+        error.message ||
+          "Passkey sign-in failed. Sign in with Google first, then add a passkey.",
+      );
+    }
+  }
+
+  const shownError = localError || errorMessage;
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-10">
@@ -61,9 +138,9 @@ export function SignInCard({
           Welcome to Penopta
         </h1>
 
-        {errorMessage ? (
+        {shownError ? (
           <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {errorMessage}
+            {shownError}
           </p>
         ) : null}
 
@@ -71,24 +148,36 @@ export function SignInCard({
           Continue to register or sign in.
         </p>
 
+        {/* Conditional UI hint for passkey autofill */}
+        <input
+          type="text"
+          name="username"
+          autoComplete="username webauthn"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+        />
+
         <div className="mt-6 space-y-3">
-          <Link
-            href={href}
-            prefetch={false}
-            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void continueWithGoogle()}
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background disabled:opacity-60"
           >
             <GoogleMark />
             Continue with Google
-          </Link>
+          </button>
 
-          <Link
-            href={href}
-            prefetch={false}
-            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void continueWithPasskey()}
+            className="flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background disabled:opacity-60"
           >
-            <MicrosoftMark />
-            Continue with Microsoft
-          </Link>
+            <PasskeyMark />
+            Continue with Passkey
+          </button>
         </div>
       </div>
     </main>

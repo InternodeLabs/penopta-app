@@ -13,10 +13,10 @@ import {
 import { ProjectHeader } from "@/components/ProjectHeader";
 import { ProjectVisibilityControl } from "@/components/ProjectVisibilityControl";
 import { ThreadConversation } from "@/components/ThreadConversation";
-import { lookupPortalUsers } from "@/lib/auth/portal-users";
 import { getSession } from "@/lib/auth/server";
 import type { SessionUser } from "@/lib/auth/session";
 import { loginStartHref } from "@/lib/auth/urls";
+import { lookupUsers } from "@/lib/auth/users";
 import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { getVisibleProject } from "@/lib/projects/data";
@@ -63,10 +63,7 @@ export default async function ProjectDetailPage({
   ]);
 
   const [memberNames, ownerNames] = await Promise.all([
-    lookupPortalUsers(
-      members.map((m) => m.userId),
-      session.apiToken,
-    ),
+    lookupUsers(members.map((m) => m.userId)),
     resolveThreadOwnerNames(orgThreads, session),
   ]);
   const memberLabels = members.map((m) =>

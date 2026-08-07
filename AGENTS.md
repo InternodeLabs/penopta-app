@@ -14,18 +14,22 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 
 ### Auth
 
-- Penopta is an auth _consumer_ of Internode (`portal-frontend`). Do not add a local identity provider.
+- Penopta owns identity via **Better Auth** (not Internode / portal-frontend).
+- Providers: **Google** and **Passkey** now; GitHub / Apple can be added later.
 - The app is **login-required**. There is no logged-out product UI and no public project list.
-- `/` is the sign-in page when logged out (mockup-styled card). After sign-in it is the workspace.
-- Sign-in CTAs go to `/authenticating?returnTo=…` (brief interstitial), which then
-  continues to `/api/auth/login?returnTo=…` (Internode PKCE start). Do **not** send
-  users to `/login` as the normal path — that route only forwards auth errors onto `/?error=…`.
-- Session user id comes from the portal (`session.user.id`). Use that string as `owner_user_id`.
+- `/` is the sign-in page when logged out (Google + Passkey). After sign-in it is the workspace.
+- Sign-in CTAs for protected routes use `loginStartHref(returnTo)` → `/?returnTo=…`.
+  `/authenticating` only forwards to that. `/login` only forwards auth errors onto `/?error=…`.
+- Session user id comes from Better Auth (`session.user.id`). Use that string as `owner_user_id`.
+- Existing prod rows that were keyed by Internode portal ids keep those UUIDs when the
+  matching email signs up (see `LEGACY_USER_IDS` in `src/lib/auth/auth.ts`). Re-run
+  `npm run auth:dump-user-map` before cutover if anyone new signed in under Portal.
 
 ### Data model
 
-- Plain Postgres + Drizzle. Ownership stays on portal user ids — Penopta is not an identity provider, even for orgs.
-- **Organizations are the ownership layer.** `organization` + `organization_membership` (role `owner`|`member`) are local tables keyed by portal user ids. Every user gets an auto-created **personal** org; they can belong to many orgs but act in exactly one **active** org at a time (`user_active_org`). Resolve it with `resolveActiveOrg(userId)` (guarantees a personal org, validates/falls back). Never scope reads by `owner_user_id` alone — scope by the active org.
+- Plain Postgres + Drizzle. Auth users live in Better Auth tables (`user`, `session`,
+  `account`, `verification`, `passkey`). Orgs and app data reference those user ids.
+- **Organizations are the ownership layer.** `organization` + `organization_membership` (role `owner`|`member`) are local tables keyed by auth user ids. Every user gets an auto-created **personal** org; they can belong to many orgs but act in exactly one **active** org at a time (`user_active_org`). Resolve it with `resolveActiveOrg(userId)` (guarantees a personal org, validates/falls back). Never scope reads by `owner_user_id` alone — scope by the active org.
 - Every owned row carries `org_id` (`project`, `user_api_key`, `agent_sync_run`, `agent_thread`, `agent_thread_snapshot`). `owner_user_id` remains for attribution.
 - `project` is the starter owned entity (`public` | `private`). Reads require a session and are scoped to the active org; within an org a project is visible when `public` or `owner_user_id = viewer`.
 - `user_api_key`: one active opaque key per user **per org** (30-day TTL), minted for the active org. Re-mint (rotate) or invalidate anytime. Appended to the skill URL as `key=…`; `resolveOwnerByApiKey` returns `{ ownerUserId, orgId }`. Expired/invalidated keys fail lookup.
@@ -57,7 +61,7 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
 
 - Drizzle ORM + `@neondatabase/serverless` (prod) + `pg` (local).
 - Stay within Vercel Hobby + Neon free unless the user explicitly opts out.
-- Architecture mirrors Skillbase (`~/repos/skillbase`) — keep auth/db/env patterns aligned.
+- Architecture mirrors Skillbase (`~/repos/skillbase`) for db/env patterns; auth is local Better Auth.
 
 ### Dependencies
 

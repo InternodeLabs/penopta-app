@@ -18,8 +18,8 @@ export interface OrgSwitcherItem {
 
 /**
  * Footer control: shows the active org and, when clicked, opens an upward
- * popover to switch orgs, create one, manage the active org, or open
- * integrations.
+ * popover to switch orgs, create one, manage the active org, open
+ * integrations, or sign out.
  */
 export function OrgSwitcher({
   activeOrgId,
@@ -195,6 +195,17 @@ export function OrgSwitcher({
           >
             Manage integrations
           </Link>
+
+          <div className="my-1 h-px bg-border" />
+
+          <form action="/api/auth/logout" method="post">
+            <button
+              type="submit"
+              className="block w-full rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-background hover:text-foreground"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       ) : null}
 

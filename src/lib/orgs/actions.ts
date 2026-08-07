@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { lookupPortalUsers, resolvePortalUser } from "@/lib/auth/portal-users";
 import { getSession } from "@/lib/auth/server";
+import { lookupUsers, resolveUser } from "@/lib/auth/users";
 import { sendOrgInviteEmail } from "@/lib/email/org-invite";
 import {
   AlreadyMemberError,
@@ -118,8 +118,8 @@ export async function renameOrgAction(
 }
 
 /**
- * Invite a portal user by email (or user id) into the org with the chosen role.
- * Owners only. The person must already have a portal account.
+ * Invite a Penopta user by email (or user id) into the org with the chosen role.
+ * Owners only. The person must already have signed in to Penopta once.
  */
 export async function inviteOrgMemberAction(
   orgId: string,
@@ -139,24 +139,25 @@ export async function inviteOrgMemberAction(
   }
 
   try {
-    const portalUser = await resolvePortalUser(trimmed, session.apiToken);
-    if (!portalUser) {
+    const invitee = await resolveUser(trimmed);
+    if (!invitee) {
       return {
         ok: false,
-        error: "No portal account found for that email. They need to sign up first.",
+        error:
+          "No Penopta account found for that email. They need to sign in once first.",
       };
     }
-    if (portalUser.id === session.user.id) {
+    if (invitee.id === session.user.id) {
       return { ok: false, error: "You're already in this org." };
     }
 
     const org = await getOrgById(orgId);
     if (!org) return { ok: false, error: "Organization not found." };
 
-    await addOrgMember(orgId, portalUser.id, role);
+    await addOrgMember(orgId, invitee.id, role);
     revalidateOrgs();
 
-    const inviteEmail = portalUser.email?.trim();
+    const inviteEmail = invitee.email?.trim();
     if (inviteEmail) {
       try {
         await sendOrgInviteEmail({
@@ -174,7 +175,7 @@ export async function inviteOrgMemberAction(
       }
     }
 
-    return { ok: true, id: portalUser.id };
+    return { ok: true, id: invitee.id };
   } catch (err) {
     if (err instanceof AlreadyMemberError) {
       return { ok: false, error: "They're already a member of this org." };
@@ -258,13 +259,10 @@ export async function listOrgMembersAction(
 
   try {
     const rows = await listOrgMembers(orgId);
-    const directory = await lookupPortalUsers(
-      rows.map((r) => r.userId),
-      session.apiToken,
-    );
+    const directory = await lookupUsers(rows.map((r) => r.userId));
 
     const members: OrgMemberView[] = rows.map((r) => {
-      const portal = directory.get(r.userId);
+      const directoryUser = directory.get(r.userId);
       const isYou = r.userId === session.user.id;
       return {
         id: r.id,
@@ -272,8 +270,8 @@ export async function listOrgMembersAction(
         role: r.role as OrgRole,
         name: isYou
           ? session.user.name || session.user.email
-          : (portal?.name ?? null),
-        email: isYou ? session.user.email : (portal?.email ?? null),
+          : (directoryUser?.name ?? null),
+        email: isYou ? session.user.email : (directoryUser?.email ?? null),
         isYou,
       };
     });

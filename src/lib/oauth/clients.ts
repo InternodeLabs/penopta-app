@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { randomToken } from "@/lib/auth/pkce";
+import { randomToken } from "@/lib/oauth/pkce";
 import { db } from "@/lib/db/client";
 import { oauthClients, type OAuthClientRow } from "@/lib/db/schema";
 
