@@ -9,7 +9,7 @@ import { setProviderProjectTrackedAction } from "@/lib/integrations/actions";
 import {
   PROVIDER_PROJECT_SOURCE_LABEL,
   type AvailableProviderProject,
-} from "@/lib/integrations/provider-projects-data";
+} from "@/lib/integrations/provider-projects-view";
 
 /** List available provider projects with track toggles. */
 export function AvailableProjectsPanel({

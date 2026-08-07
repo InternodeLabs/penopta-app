@@ -8,30 +8,18 @@ import {
 } from "@/lib/db/schema";
 import { isPrivateProjectName } from "@/lib/ingest/data";
 import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
-
-/** Who first registered a catalog project. */
-export type ProviderProjectSource = "penopta_sync" | "skill";
-
-export const PROVIDER_PROJECT_SOURCE_LABEL: Record<
+import type {
+  AvailableProviderProject,
   ProviderProjectSource,
-  string
-> = {
-  penopta_sync: "Penopta Sync",
-  skill: "Scheduled skill",
-};
+} from "@/lib/integrations/provider-projects-view";
+
+export type { AvailableProviderProject, ProviderProjectSource };
+export {
+  PROVIDER_PROJECT_SOURCE_LABEL,
+} from "@/lib/integrations/provider-projects-view";
 
 /** Mac menu-bar companion agent id (see Penopta Sync SyncEngine). */
 export const PENOPTA_SYNC_AGENT_ID = "penopta-sync-macos";
-
-export type AvailableProviderProject = {
-  id: string;
-  provider: ProviderProjectProvider;
-  projectId: string;
-  name: string;
-  createdAt: string | null;
-  source: ProviderProjectSource | null;
-  tracked: boolean;
-};
 
 function toPublic(row: AvailableProviderProjectRow): AvailableProviderProject {
   const source =
