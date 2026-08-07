@@ -45,7 +45,7 @@ export function WorkspaceEmpty({
       projects={projects}
       ownerNames={ownerNames}
     >
-      <main className="flex flex-1 items-center justify-center p-6">
+      <main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
         {canStartProject ? (
           <StartProjectModal threads={threadOptions} />
         ) : (

@@ -37,15 +37,15 @@ export function WorkspaceShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh bg-background">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
-        <div className="border-b border-border px-4 py-4">
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
+        <div className="shrink-0 border-b border-border px-4 py-4">
           <Link href="/">
             <BrandLogo className="h-6" />
           </Link>
         </div>
 
-        <div className="px-3 pt-3">
+        <div className="shrink-0 px-3 pt-3">
           <AddProjectButton
             enabled={
               threads.filter((thread) => thread.ownerUserId === user.id)
@@ -66,7 +66,7 @@ export function WorkspaceShell({
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
           {projects.length > 0 ? (
-            <div className="mb-5">
+            <div className="mb-5 shrink-0">
               <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
                 Projects
               </p>
@@ -94,13 +94,13 @@ export function WorkspaceShell({
             </div>
           ) : null}
 
-          <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
+          <p className="shrink-0 text-[11px] font-semibold tracking-wider text-muted uppercase">
             Agent Threads
           </p>
           {threads.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No threads yet</p>
           ) : (
-            <ul className="-mx-1 mt-2 flex-1 space-y-0.5 overflow-y-auto">
+            <ul className="-mx-1 mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
               {threads.map((thread) => {
                 const active = thread.id === activeThreadId;
                 const ownerName =
@@ -135,14 +135,14 @@ export function WorkspaceShell({
         </div>
 
         {activeOrgId ? (
-          <div className="border-t border-border px-4 py-4">
+          <div className="shrink-0 border-t border-border px-4 py-4">
             <OrgSwitcher activeOrgId={activeOrgId} orgs={orgs} />
           </div>
         ) : null}
       </aside>
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-end gap-3 border-b border-border bg-surface px-4">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center justify-end gap-3 border-b border-border bg-surface px-4">
           <span className="truncate text-sm text-muted" title={user.email}>
             {user.name || user.email}
           </span>

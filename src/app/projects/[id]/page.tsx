@@ -88,16 +88,16 @@ export default async function ProjectDetailPage({
     : null;
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Left: project threads sidebar */}
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
-        <div className="border-b border-border px-4 py-4">
+      <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
+        <div className="shrink-0 border-b border-border px-4 py-4">
           <Link href="/">
             <BrandLogo className="h-7" />
           </Link>
         </div>
 
-        <div className="px-3 pt-3">
+        <div className="shrink-0 px-3 pt-3">
           <Link
             href="/"
             className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition hover:bg-background"
@@ -108,7 +108,7 @@ export default async function ProjectDetailPage({
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-4 pt-5">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
               Agent Threads
             </p>
@@ -152,7 +152,7 @@ export default async function ProjectDetailPage({
           )}
         </div>
 
-        <div className="border-t border-border px-4 py-4">
+        <div className="shrink-0 border-t border-border px-4 py-4">
           <OrgSwitcher
             activeOrgId={activeOrg.id}
             orgs={toOrgSwitcherItems(memberships)}
@@ -161,7 +161,7 @@ export default async function ProjectDetailPage({
       </aside>
 
       {/* Center: conversation */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ProjectHeader
           projectId={project.id}
           name={project.name}
@@ -170,7 +170,7 @@ export default async function ProjectDetailPage({
 
         {selectedThread ? (
           <main className="flex min-h-0 flex-1 flex-col">
-            <div className="border-b border-border bg-surface px-6 py-4">
+            <div className="shrink-0 border-b border-border bg-surface px-6 py-4">
               <h2 className="truncate text-lg font-semibold tracking-tight">
                 {selectedThread.title || "Untitled thread"}
               </h2>
@@ -183,7 +183,7 @@ export default async function ProjectDetailPage({
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
               <div className="mx-auto w-full max-w-3xl">
                 {selectedThread.workingState?.statusSummary ? (
                   <div className="mb-6 rounded-xl border border-border bg-[#f4f4f5] px-4 py-3 text-sm leading-relaxed text-foreground">
@@ -203,8 +203,8 @@ export default async function ProjectDetailPage({
             <main
               className={
                 activityLines.length > 0
-                  ? "flex flex-1 flex-col overflow-y-auto p-6"
-                  : "flex flex-1 flex-col items-center justify-center p-6 text-center"
+                  ? "flex min-h-0 flex-1 flex-col overflow-y-auto p-6"
+                  : "flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center"
               }
             >
               {activityLines.length > 0 ? (
@@ -231,7 +231,7 @@ export default async function ProjectDetailPage({
               )}
             </main>
 
-            <div className="border-t border-border bg-surface px-4 py-3">
+            <div className="shrink-0 border-t border-border bg-surface px-4 py-3">
               <div className="mx-auto flex max-w-3xl items-end gap-2">
                 <textarea
                   rows={1}
@@ -257,7 +257,7 @@ export default async function ProjectDetailPage({
       </div>
 
       {/* Right: details */}
-      <aside className="hidden w-64 shrink-0 flex-col gap-6 border-l border-border bg-surface px-5 py-5 lg:flex">
+      <aside className="hidden h-full w-64 shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-surface px-5 py-5 lg:flex">
         <p className="text-[11px] font-semibold tracking-wider text-muted uppercase">
           Details
         </p>

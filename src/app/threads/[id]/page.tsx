@@ -54,7 +54,7 @@ export default async function ThreadPage({
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <div className="mx-auto w-full max-w-3xl">
             {thread.workingState?.statusSummary ? (
               <div className="mb-6 rounded-xl border border-border bg-[#f4f4f5] px-4 py-3 text-sm leading-relaxed text-foreground">
