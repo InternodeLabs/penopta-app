@@ -113,7 +113,7 @@ export async function rotateRefreshToken(
 }
 
 /**
- * Stamp a token as verified: records when `verify_penopta` was last called on
+ * Stamp a token as verified: records when `penopta_verify` was last called on
  * this connection and which agent ran it. Keyed by the access token hash so no
  * extra table is needed — the connection row itself carries the proof.
  */
@@ -127,7 +127,7 @@ export async function markTokenVerified(
     .where(eq(oauthTokens.accessTokenHash, accessTokenHash));
 }
 
-/** The last successful `verify_penopta` call on a user's MCP connection. */
+/** The last successful `penopta_verify` call on a user's MCP connection. */
 export interface McpVerification {
   verifiedAt: Date;
   agent: string | null;
@@ -135,7 +135,7 @@ export interface McpVerification {
 
 /**
  * Latest MCP verification across a user's connections, or null if they've never
- * run `verify_penopta`. Used to gate connector-dependent UI until we've seen the
+ * run `penopta_verify`. Used to gate connector-dependent UI until we've seen the
  * MCP server actually reach us.
  */
 export async function getLatestMcpVerification(

@@ -121,9 +121,9 @@ export function syncRoutineInstructions(
 
 /**
  * The one-liner we ask users to send in provider chat so the connector calls
- * `verify_penopta`, which is what unlocks the sync setup on the setup page.
+ * `penopta_verify`, which is what unlocks the sync setup on the setup page.
  */
-export const VERIFY_CHAT_COMMAND = "Run verify_penopta tool";
+export const VERIFY_CHAT_COMMAND = "Run penopta_verify tool";
 
 /** Open Claude with the verify command prefilled. */
 export function claudeVerifyHref(): string {

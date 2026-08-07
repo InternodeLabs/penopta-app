@@ -102,7 +102,7 @@ export function buildPenoptaMcpServer(
   accessTokenHash?: string,
 ): void {
   server.registerTool(
-    "verify_penopta",
+    "penopta_verify",
     {
       title: "Verify Penopta connection",
       description:
@@ -140,13 +140,13 @@ export function buildPenoptaMcpServer(
   );
 
   server.registerTool(
-    "list_projects",
+    "penopta_list_projects",
     {
-      title: "List projects",
+      title: "List Penopta projects",
       description:
-        "List the Penopta projects you can see, with their ids and summaries. " +
+        "Penopta: list the projects you can see, with their ids and summaries. " +
         "Start here to find the project a question is about, then call " +
-        "get_project_context with the id or slug.",
+        "penopta_get_project_context with the id or slug.",
       inputSchema: z.object({
         query: z
           .string()
@@ -158,18 +158,20 @@ export function buildPenoptaMcpServer(
   );
 
   server.registerTool(
-    "get_project_context",
+    "penopta_get_project_context",
     {
-      title: "Get project context",
+      title: "Get Penopta project context",
       description:
-        "Return a project plus condensed context from every conversation thread " +
-        "linked to it (objectives, status summaries, next actions, open " +
+        "Penopta: return a project plus condensed context from every conversation " +
+        "thread linked to it (objectives, status summaries, next actions, open " +
         "questions). Use this to ground an answer in what has actually happened " +
         "on the project.",
       inputSchema: z.object({
         project: z
           .string()
-          .describe("Project id (UUID) or slug, as returned by list_projects."),
+          .describe(
+            "Project id (UUID) or slug, as returned by penopta_list_projects.",
+          ),
       }),
     },
     async ({ project }) => {
@@ -180,13 +182,13 @@ export function buildPenoptaMcpServer(
   );
 
   server.registerTool(
-    "search_threads",
+    "penopta_search_threads",
     {
-      title: "Search threads",
+      title: "Search Penopta threads",
       description:
-        "Search conversation threads by keywords, optionally scoped to one " +
-        "project. Returns matching threads with a snippet and their internal " +
-        "thread ids; follow up with get_thread for full detail.",
+        "Penopta: search conversation threads by keywords, optionally scoped to " +
+        "one project. Returns matching threads with a snippet and their internal " +
+        "thread ids; follow up with penopta_get_thread for full detail.",
       inputSchema: z.object({
         query: z.string().describe("Keywords to search for."),
         project: z
@@ -209,13 +211,13 @@ export function buildPenoptaMcpServer(
   );
 
   server.registerTool(
-    "get_thread",
+    "penopta_get_thread",
     {
-      title: "Get thread",
+      title: "Get Penopta thread",
       description:
-        "Return the full detail of a single thread by its internal id: working " +
-        "state (decisions, completed work, artifacts, open questions) and the " +
-        "full activity log.",
+        "Penopta: return the full detail of a single thread by its internal id: " +
+        "working state (decisions, completed work, artifacts, open questions) " +
+        "and the full activity log.",
       inputSchema: z.object({
         thread_id: z
           .string()

@@ -34,7 +34,7 @@ export type McpProject = {
 
 /** One thread condensed to what a model needs to reason about a project. */
 export type McpThreadSummary = {
-  /** Internal id — pass this to `get_thread` / `fetch`. */
+  /** Internal id — pass this to `penopta_get_thread` / `fetch`. */
   threadId: string;
   /** Stable id from the producing agent (chatgpt/claude). */
   externalThreadId: string;

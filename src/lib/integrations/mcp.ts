@@ -26,6 +26,11 @@ export type McpToolInfo = {
   summary: string;
   /** When an agent would typically call this. */
   whenToUse: string;
+  /**
+   * Show on /integrations/mcp. False for scheduled-skill internals and
+   * ChatGPT search/fetch shims — users don't ask for those by name.
+   */
+  listOnPage?: boolean;
 };
 
 export const mcpIntegration = {
@@ -36,7 +41,7 @@ export const mcpIntegration = {
     "Commands your agents can call after you add Penopta as an MCP server in Claude, ChatGPT, or another client.",
   setupTitle: "Penopta MCP tools",
   intro:
-    "Once Penopta is connected as an MCP server, agents can verify the link, read project and thread context, discover and sync provider projects, and push a single chat on demand. Identity and org come from the OAuth connection — no API key to paste.",
+    "Once Penopta is connected as an MCP server, you can ask your agent to verify the link, look up project and thread context, sync now, or push this chat into Penopta. Identity and org come from the OAuth connection — no API key to paste.",
   /** White well — the MCP mark is black. */
   iconBg: "bg-white border border-border",
 };
@@ -89,53 +94,60 @@ export function listMcpSetupLinks(): McpSetupLink[] {
 export function listMcpTools(): McpToolInfo[] {
   return [
     {
-      name: "verify_penopta",
+      name: "penopta_verify",
       title: "Verify Penopta connection",
       category: "connection",
+      listOnPage: true,
       summary:
         "Confirms the MCP connector is installed, signed in, and talking to the right Penopta user and org.",
       whenToUse:
         "When you ask whether Penopta is set up correctly, or during first-time connector setup.",
     },
     {
-      name: "list_projects",
+      name: "penopta_list_projects",
       title: "List projects",
       category: "read",
+      listOnPage: true,
       summary:
         "Lists Penopta projects you can see, with ids, slugs, and summaries.",
       whenToUse:
         "To find which project a question is about before pulling deeper context.",
     },
     {
-      name: "get_project_context",
+      name: "penopta_get_project_context",
       title: "Get project context",
       category: "read",
+      listOnPage: true,
       summary:
         "Returns a project plus condensed context from its linked threads — objectives, status, next actions, and open questions.",
       whenToUse:
         "To ground an answer in what has actually happened on a project.",
     },
     {
-      name: "search_threads",
+      name: "penopta_search_threads",
       title: "Search threads",
       category: "read",
+      listOnPage: true,
       summary:
         "Searches conversation threads by keywords, optionally limited to one project.",
       whenToUse:
-        "When you need matching threads and snippets, then follow up with get_thread for full detail.",
+        "When you need matching threads and snippets, then follow up with penopta_get_thread for full detail.",
     },
     {
-      name: "get_thread",
+      name: "penopta_get_thread",
       title: "Get thread",
       category: "read",
+      listOnPage: true,
       summary:
         "Returns full detail for one thread: working state, decisions, artifacts, open questions, and the activity log.",
-      whenToUse: "After search_threads (or when you already know the thread id).",
+      whenToUse:
+        "After penopta_search_threads (or when you already know the thread id).",
     },
     {
       name: "known_projects",
       title: "Known provider projects",
       category: "sync",
+      listOnPage: false,
       summary:
         "Lists ChatGPT or Claude projects already in Penopta’s available catalog (metadata only — no transcripts).",
       whenToUse:
@@ -145,6 +157,7 @@ export function listMcpTools(): McpToolInfo[] {
       name: "make_projects_available",
       title: "Make provider projects available",
       category: "sync",
+      listOnPage: false,
       summary:
         "Registers unknown provider projects in the catalog (id, name, optional created time). Does not change tracking. Skips P: / Private: names.",
       whenToUse:
@@ -154,6 +167,7 @@ export function listMcpTools(): McpToolInfo[] {
       name: "tracked_projects",
       title: "Tracked provider projects",
       category: "sync",
+      listOnPage: false,
       summary:
         "Returns the provider projects you opted to track for transcript sync.",
       whenToUse:
@@ -163,6 +177,7 @@ export function listMcpTools(): McpToolInfo[] {
       name: "penopta_sync_now",
       title: "Sync now",
       category: "sync",
+      listOnPage: true,
       summary:
         "Starts an immediate sync window in the current chat (does not wait for the hourly schedule). Returns the window, tracked projects, and steps to run; delivery still uses sync_threads.",
       whenToUse:
@@ -172,6 +187,7 @@ export function listMcpTools(): McpToolInfo[] {
       name: "sync_threads",
       title: "Sync threads",
       category: "sync",
+      listOnPage: false,
       summary:
         "Delivers a windowed batch of thread context to Penopta. Identity and org come from the authenticated connector — no API key. Idempotent by runId.",
       whenToUse:
@@ -181,6 +197,7 @@ export function listMcpTools(): McpToolInfo[] {
       name: "penopta_track_thread",
       title: "Track thread",
       category: "sync",
+      listOnPage: true,
       summary:
         "Pushes a single conversation into Penopta for later search, project context, and handoffs — including standalone chats outside tracked projects.",
       whenToUse:
@@ -190,38 +207,43 @@ export function listMcpTools(): McpToolInfo[] {
       name: "search",
       title: "Search",
       category: "chatgpt-compat",
+      listOnPage: false,
       summary:
         "ChatGPT-connector-shaped search over Penopta threads. Returns result ids for fetch.",
       whenToUse:
-        "Used by ChatGPT’s expected search/fetch connector pair; same idea as search_threads.",
+        "Used by ChatGPT’s expected search/fetch connector pair; same idea as penopta_search_threads.",
     },
     {
       name: "fetch",
       title: "Fetch",
       category: "chatgpt-compat",
+      listOnPage: false,
       summary:
         "Fetches the full text of one Penopta thread by an id returned from search.",
       whenToUse:
-        "The companion to search for ChatGPT connectors; similar to get_thread.",
+        "The companion to search for ChatGPT connectors; similar to penopta_get_thread.",
     },
   ];
 }
 
+/** Tools shown on /integrations/mcp (user-facing only). */
 export function listMcpToolsByCategory(): {
   category: McpToolCategory;
   label: string;
   tools: McpToolInfo[];
 }[] {
-  const tools = listMcpTools();
+  const tools = listMcpTools().filter((t) => t.listOnPage !== false);
   const order: McpToolCategory[] = [
     "connection",
     "read",
     "sync",
     "chatgpt-compat",
   ];
-  return order.map((category) => ({
-    category,
-    label: MCP_TOOL_CATEGORY_LABELS[category],
-    tools: tools.filter((t) => t.category === category),
-  }));
+  return order
+    .map((category) => ({
+      category,
+      label: MCP_TOOL_CATEGORY_LABELS[category],
+      tools: tools.filter((t) => t.category === category),
+    }))
+    .filter((group) => group.tools.length > 0);
 }

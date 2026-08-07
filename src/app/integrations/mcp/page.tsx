@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { IntegrationsShell } from "@/components/IntegrationsShell";
+import { McpCommandPlayMenu } from "@/components/McpCommandPlayMenu";
 import Mcp from "@/components/icons/Mcp";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
@@ -53,7 +54,7 @@ export default async function McpIntegrationPage() {
   }
   const verifiedProvider = providerIdFromAgentName(mcpVerification?.agent);
   if (verifiedProvider) activeIds.add(verifiedProvider);
-  // Any successful verify_penopta counts as MCP proven; attribute to both
+  // Any successful penopta_verify counts as MCP proven; attribute to both
   // chat providers only when the agent field was omitted.
   if (mcpVerification && !mcpVerification.agent) {
     activeIds.add("claude");
@@ -152,8 +153,8 @@ export default async function McpIntegrationPage() {
               MCP commands
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Tools exposed by the Penopta MCP server. Agents call these by name
-              after you connect.
+              Things you can ask your agent to do after Penopta is connected.
+              Scheduled sync still uses additional tools behind the scenes.
             </p>
           </div>
 
@@ -174,11 +175,14 @@ export default async function McpIntegrationPage() {
               </thead>
               <tbody>
                 {toolGroups.flatMap((group) => [
-                  <tr key={`${group.category}-header`} className="border-b border-border">
+                  <tr
+                    key={`${group.category}-header`}
+                    className="border-b border-border"
+                  >
                     <th
                       scope="colgroup"
                       colSpan={3}
-                      className="bg-zinc-50/80 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase"
+                      className="bg-zinc-200 px-3 py-2 text-xs font-semibold tracking-wide text-muted uppercase"
                     >
                       {group.label}
                     </th>
@@ -189,17 +193,19 @@ export default async function McpIntegrationPage() {
                       className="border-b border-border last:border-b-0 align-top"
                     >
                       <td className="px-3 py-3">
-                        <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
-                          {tool.name}
-                        </code>
-                        <div className="mt-1 text-xs text-muted">
-                          {tool.title}
+                        <div className="group/cmd flex items-center gap-1">
+                          <code className="rounded bg-zinc-200 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                            {tool.name}
+                          </code>
+                          <McpCommandPlayMenu command={tool.name} />
                         </div>
                       </td>
-                      <td className="px-3 py-3 leading-relaxed text-muted">
-                        {tool.summary}
+                      <td className="px-3 py-3 leading-relaxed ">
+                        <div className=" text-xs text-muted">
+                          {tool.summary}
+                        </div>
                       </td>
-                      <td className="px-3 py-3 leading-relaxed text-muted">
+                      <td className="px-3 py-3 text-xs leading-relaxed text-muted">
                         {tool.whenToUse}
                       </td>
                     </tr>
