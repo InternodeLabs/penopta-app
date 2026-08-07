@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import {
+  catalogProviderForAgent,
+  ensureCatalogFromAgentThreads,
   listKnownProviderProjects,
   listTrackedProviderProjects,
   makeProviderProjectsAvailable,
@@ -240,7 +242,7 @@ export function buildPenoptaMcpServer(
         owner.ownerUserId,
         owner.orgId,
         provider,
-        projects,
+        projects.map((p) => ({ ...p, source: "skill" as const })),
       );
       return jsonResult({
         ok: true,
@@ -306,6 +308,17 @@ export function buildPenoptaMcpServer(
           owner.orgId,
           payload,
         );
+        const catalogProvider = catalogProviderForAgent({
+          agentName: payload.agent.name,
+          kind: payload.threads[0]?.kind,
+        });
+        if (catalogProvider) {
+          await ensureCatalogFromAgentThreads(
+            owner.ownerUserId,
+            owner.orgId,
+            catalogProvider,
+          );
+        }
         const checkpoint = run.windowEnd.toISOString();
         return jsonResult({
           ok: true,

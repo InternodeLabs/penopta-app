@@ -318,10 +318,10 @@ export const projectThreads = pgTable(
 export type ProjectThreadRow = typeof projectThreads.$inferSelect;
 
 /**
- * Catalog of ChatGPT/Claude projects discovered by the sync skill (metadata
- * only — no transcripts). Users opt individual rows into tracking via the
- * integrations UI; the skill then syncs threads only for tracked projects.
- * Distinct from Penopta's own `project` table.
+ * Catalog of ChatGPT/Claude projects discovered by sync (metadata only — no
+ * transcripts). Users opt individual rows into tracking via the integrations
+ * UI; the skill then syncs threads only for tracked projects. Distinct from
+ * Penopta's own `project` table.
  */
 export const availableProviderProjects = pgTable(
   "available_provider_project",
@@ -338,6 +338,11 @@ export const availableProviderProjects = pgTable(
     name: text("name").notNull(),
     /** When the provider project was created, if known. */
     projectCreatedAt: timestamp("project_created_at", { withTimezone: true }),
+    /**
+     * Who first registered this catalog row: the mac menu-bar app, or the
+     * scheduled skill / MCP `make_projects_available` path. First writer wins.
+     */
+    source: text("source", { enum: ["penopta_sync", "skill"] }),
     /** User opted this project into transcript sync. */
     tracked: boolean("tracked").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })

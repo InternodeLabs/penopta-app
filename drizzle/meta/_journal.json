@@ -64,6 +64,13 @@
       "when": 1785975584014,
       "tag": "0008_orange_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786068469020,
+      "tag": "0009_stiff_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

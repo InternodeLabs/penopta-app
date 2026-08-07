@@ -9,7 +9,10 @@ import { IntegrationsShell } from "@/components/IntegrationsShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import { asProviderProjectProvider } from "@/lib/integrations/provider-projects";
-import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
+import {
+  ensureCatalogFromAgentThreads,
+  listAvailableProviderProjects,
+} from "@/lib/integrations/provider-projects-data";
 import {
   getIntegrationProvider,
   getPublicAppUrl,
@@ -59,9 +62,15 @@ export default async function IntegrationSetupPage({
   if (!provider) notFound();
 
   const { activeOrg } = await resolveActiveOrg(session.user.id);
+  const catalogProvider = asProviderProjectProvider(provider.id);
+  await ensureCatalogFromAgentThreads(
+    session.user.id,
+    activeOrg.id,
+    catalogProvider,
+  );
   const availableProjects = await listAvailableProviderProjects(
     activeOrg.id,
-    asProviderProjectProvider(provider.id),
+    catalogProvider,
   );
 
   const ProviderIcon = provider.icon;

@@ -1,12 +1,27 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, min, ne, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
+  agentThreads,
   availableProviderProjects,
   type AvailableProviderProjectRow,
 } from "@/lib/db/schema";
 import { isPrivateProjectName } from "@/lib/ingest/data";
 import type { ProviderProjectProvider } from "@/lib/integrations/provider-projects";
+
+/** Who first registered a catalog project. */
+export type ProviderProjectSource = "penopta_sync" | "skill";
+
+export const PROVIDER_PROJECT_SOURCE_LABEL: Record<
+  ProviderProjectSource,
+  string
+> = {
+  penopta_sync: "Penopta Sync",
+  skill: "Scheduled skill",
+};
+
+/** Mac menu-bar companion agent id (see Penopta Sync SyncEngine). */
+export const PENOPTA_SYNC_AGENT_ID = "penopta-sync-macos";
 
 export type AvailableProviderProject = {
   id: string;
@@ -14,18 +29,47 @@ export type AvailableProviderProject = {
   projectId: string;
   name: string;
   createdAt: string | null;
+  source: ProviderProjectSource | null;
   tracked: boolean;
 };
 
 function toPublic(row: AvailableProviderProjectRow): AvailableProviderProject {
+  const source =
+    row.source === "penopta_sync" || row.source === "skill" ? row.source : null;
   return {
     id: row.id,
     provider: row.provider,
     projectId: row.externalProjectId,
     name: row.name,
     createdAt: row.projectCreatedAt?.toISOString() ?? null,
+    source,
     tracked: row.tracked,
   };
+}
+
+/**
+ * Map an agent sync producer onto the integrations catalog provider.
+ * Local Claude Code sessions count as Claude; Codex has no catalog page yet.
+ */
+export function catalogProviderForAgent(input: {
+  agentName?: string | null;
+  kind?: string | null;
+}): ProviderProjectProvider | null {
+  const tokens = [input.agentName, input.kind]
+    .map((v) => v?.trim().toLowerCase())
+    .filter((v): v is string => Boolean(v));
+
+  for (const token of tokens) {
+    if (token === "chatgpt" || token === "openai") return "chatgpt";
+    if (
+      token === "claude" ||
+      token === "claude-code" ||
+      token === "anthropic"
+    ) {
+      return "claude";
+    }
+  }
+  return null;
 }
 
 /** Drop any catalog rows whose names are private-prefixed (safety cleanup). */
@@ -65,6 +109,85 @@ export async function listAvailableProviderProjects(
   return kept.map(toPublic);
 }
 
+/**
+ * Seed the available-projects catalog from projects already seen on synced
+ * agent threads. First source to land data (Penopta Sync or the scheduled
+ * skill) is enough to populate the integrations page.
+ */
+export async function ensureCatalogFromAgentThreads(
+  ownerUserId: string,
+  orgId: string,
+  provider: ProviderProjectProvider,
+): Promise<{ inserted: number; updated: number }> {
+  const nameFilters =
+    provider === "claude"
+      ? or(
+          eq(agentThreads.lastAgentName, "claude-code"),
+          eq(agentThreads.lastAgentName, "claude"),
+          eq(agentThreads.kind, "claude-code"),
+          eq(agentThreads.kind, "claude"),
+        )
+      : or(
+          eq(agentThreads.lastAgentName, "chatgpt"),
+          eq(agentThreads.kind, "chatgpt"),
+        );
+
+  const rows = await db
+    .select({
+      projectContext: agentThreads.projectContext,
+      earliestThread: min(agentThreads.threadCreatedAt),
+      earliestRow: min(agentThreads.createdAt),
+      earliestSynced: min(agentThreads.lastSyncedAt),
+      fromPenoptaSync: sql<number>`count(*) filter (where ${agentThreads.lastAgentId} = ${PENOPTA_SYNC_AGENT_ID})`,
+    })
+    .from(agentThreads)
+    .where(
+      and(
+        eq(agentThreads.orgId, orgId),
+        isNotNull(agentThreads.projectContext),
+        ne(agentThreads.projectContext, ""),
+        nameFilters,
+      ),
+    )
+    .groupBy(agentThreads.projectContext);
+
+  const projects = rows
+    .map((row) => {
+      const name = row.projectContext?.trim();
+      if (!name || isPrivateProjectName(name)) return null;
+      const candidates = [
+        row.earliestThread,
+        row.earliestRow,
+        row.earliestSynced,
+      ].filter((d): d is Date => d instanceof Date && !Number.isNaN(d.getTime()));
+      const earliest =
+        candidates.length > 0
+          ? new Date(Math.min(...candidates.map((d) => d.getTime())))
+          : null;
+      const source: ProviderProjectSource =
+        Number(row.fromPenoptaSync) > 0 ? "penopta_sync" : "skill";
+      return {
+        // Local folder / workspace names are the stable id until the skill
+        // registers a richer provider id for the same project.
+        projectId: name,
+        name,
+        createdAt: earliest?.toISOString() ?? null,
+        source,
+      };
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
+  if (projects.length === 0) return { inserted: 0, updated: 0 };
+
+  const result = await makeProviderProjectsAvailable(
+    ownerUserId,
+    orgId,
+    provider,
+    projects,
+  );
+  return { inserted: result.inserted, updated: result.updated };
+}
+
 /** Projects Penopta already knows about for a provider (MCP `known_projects`). */
 export async function listKnownProviderProjects(
   orgId: string,
@@ -89,12 +212,15 @@ export type MakeAvailableInput = {
   projectId: string;
   name: string;
   createdAt?: string | null;
+  /** Defaults to `skill` (MCP make_projects_available). */
+  source?: ProviderProjectSource;
 };
 
 /**
  * Upsert provider project metadata into the available catalog. Never changes
  * `tracked`. Skips (and deletes any existing) private-prefixed names — those
- * must never be stored.
+ * must never be stored. `source` is set on insert and backfilled when null;
+ * an existing source is kept (first writer wins).
  */
 export async function makeProviderProjectsAvailable(
   ownerUserId: string,
@@ -116,6 +242,7 @@ export async function makeProviderProjectsAvailable(
     const projectId = item.projectId.trim();
     const name = item.name.trim();
     if (!projectId || !name) continue;
+    const source: ProviderProjectSource = item.source ?? "skill";
 
     const existing = await db
       .select()
@@ -164,6 +291,8 @@ export async function makeProviderProjectsAvailable(
           name,
           projectCreatedAt:
             projectCreatedAt ?? existing[0].projectCreatedAt ?? null,
+          // First writer wins; backfill only when missing.
+          source: existing[0].source ?? source,
           ownerUserId,
           updatedAt: now,
         })
@@ -181,6 +310,7 @@ export async function makeProviderProjectsAvailable(
           externalProjectId: projectId,
           name,
           projectCreatedAt,
+          source,
           tracked: false,
           updatedAt: now,
         })

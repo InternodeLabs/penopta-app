@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { resolveOwnerFromBearer } from "@/lib/ingest/auth";
 import { DuplicateRunError, ingestAgentSync } from "@/lib/ingest/data";
 import { agentSyncPayloadSchema } from "@/lib/ingest/schema";
+import {
+  catalogProviderForAgent,
+  ensureCatalogFromAgentThreads,
+} from "@/lib/integrations/provider-projects-data";
 
 /**
  * Ingest a windowed agent thread-context sync.
@@ -55,6 +59,13 @@ export async function POST(request: NextRequest) {
       orgId,
       payload,
     );
+    const catalogProvider = catalogProviderForAgent({
+      agentName: payload.agent.name,
+      kind: payload.threads[0]?.kind,
+    });
+    if (catalogProvider) {
+      await ensureCatalogFromAgentThreads(ownerUserId, orgId, catalogProvider);
+    }
     const checkpoint = run.windowEnd.toISOString();
     return NextResponse.json(
       {
