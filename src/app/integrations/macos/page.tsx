@@ -44,7 +44,7 @@ export default async function MacosIntegrationPage() {
     getPenoptaSyncInstallStatus(activeOrg.id),
     getPenoptaSyncRelease(),
   ]);
-  const downloadUrl = getPenoptaSyncDownloadUrl();
+  const downloadUrl = getPenoptaSyncDownloadUrl(release);
   const downloadLabel = release
     ? `Download MacOS App (v${release.version})`
     : "Download MacOS App";

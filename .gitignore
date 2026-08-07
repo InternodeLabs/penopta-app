@@ -37,7 +37,7 @@ yarn-error.log*
 # Local Better Auth cutover checklist (emails + portal ids)
 /scripts/.prod-user-map.json
 
-# Xcode drop folder for `npm run macos:publish` (raw .app; zip ships under public/downloads/)
+# Xcode drop folder for `npm run macos:publish` (raw .app; dmg ships under public/downloads/)
 /macos-build/**
 !/macos-build/README.md
 

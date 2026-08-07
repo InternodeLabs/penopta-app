@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish a Xcode-built Penopta Sync.app into public/downloads/ (zip + version
+# Publish a Xcode-built Penopta Sync.app into public/downloads/ (DMG + version
 # manifest). Does not build — you build in Xcode, drop the .app here, then run.
 #
 # Change detection: MD5 of the .app bundle contents vs `contentMd5` in the
@@ -22,8 +22,11 @@ DROP_DIR="$ROOT/macos-build"
 DEFAULT_APP="$DROP_DIR/Penopta Sync.app"
 APP_PATH="${PENOPTA_SYNC_APP:-$DEFAULT_APP}"
 DEST_DIR="$ROOT/public/downloads"
-DEST_ZIP="$DEST_DIR/Penopta-Sync.zip"
+DEST_DMG="$DEST_DIR/Penopta-Sync.dmg"
+DEST_ZIP="$DEST_DIR/Penopta-Sync.zip" # legacy; removed on publish
 DEST_JSON="$DEST_DIR/Penopta-Sync.json"
+APP_NAME="Penopta Sync.app"
+VOL_NAME="Penopta Sync"
 SYNC_REPO="${PENOPTA_SYNC_REPO:-}"
 if [[ -z "$SYNC_REPO" ]]; then
   if [[ -d "$ROOT/../Penopta Sync" ]]; then
@@ -103,6 +106,34 @@ for dirpath, dirnames, filenames in os.walk(root):
                 h.update(chunk)
 print(h.hexdigest())
 PY
+}
+
+# Classic drag-to-Applications DMG: .app + Applications symlink.
+make_dmg() {
+  local app="$1"
+  local dmg="$2"
+  local stage
+
+  stage="$(mktemp -d "${TMPDIR:-/tmp}/penopta-sync-dmg.XXXXXX")"
+  cleanup_dmg_stage() {
+    rm -rf "$stage"
+  }
+  trap cleanup_dmg_stage EXIT
+
+  ditto "$app" "$stage/$APP_NAME"
+  ln -s /Applications "$stage/Applications"
+
+  rm -f "$dmg"
+  hdiutil create \
+    -volname "$VOL_NAME" \
+    -srcfolder "$stage" \
+    -ov \
+    -format UDZO \
+    -imagekey zlib-level=9 \
+    "$dmg" >/dev/null
+
+  trap - EXIT
+  cleanup_dmg_stage
 }
 
 while [[ $# -gt 0 ]]; do
@@ -252,8 +283,9 @@ fi
 PUBLISHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 mkdir -p "$DEST_DIR"
+make_dmg "$APP_PATH" "$DEST_DMG"
+# Drop legacy zip so downloads/ only ships the DMG.
 rm -f "$DEST_ZIP"
-ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$DEST_ZIP"
 
 json_escape() {
   python3 -c 'import json,sys; print(json.dumps(sys.argv[1]), end="")' "$1"
@@ -264,7 +296,7 @@ cat > "$DEST_JSON" <<EOF
   "version": $(json_escape "$APP_VERSION"),
   "build": ${APP_BUILD},
   "contentMd5": $(json_escape "$APP_MD5"),
-  "downloadPath": "/downloads/Penopta-Sync.zip",
+  "downloadPath": "/downloads/Penopta-Sync.dmg",
   "notes": $(json_escape "$NOTES"),
   "publishedAt": $(json_escape "$PUBLISHED_AT")
 }
@@ -274,10 +306,10 @@ echo ""
 echo "Published v${APP_VERSION} (build ${APP_BUILD})"
 echo "  contentMd5 $APP_MD5"
 echo "  from $APP_PATH"
-echo "  $DEST_ZIP ($(du -h "$DEST_ZIP" | awk '{print $1}'))"
+echo "  $DEST_DMG ($(du -h "$DEST_DMG" | awk '{print $1}'))"
 echo "  $DEST_JSON"
 echo ""
-echo "Next: commit public/downloads/Penopta-Sync.{zip,json}, then deploy."
+echo "Next: commit public/downloads/Penopta-Sync.{dmg,json} (and delete the old .zip if present), then deploy."
 if [[ "$NOTES_SET" -eq 0 ]]; then
   echo "(Tip: pass --notes \"…\" if you want banner text in the Mac app.)"
 fi

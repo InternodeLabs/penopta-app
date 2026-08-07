@@ -1,4 +1,4 @@
-# Keep folder; zip + version manifest are updated by Penopta Sync `scripts/publish-download.sh`.
+# Keep folder; DMG + version manifest are updated by `npm run macos:publish`.
 
-- `Penopta-Sync.zip` — downloadable app bundle
+- `Penopta-Sync.dmg` — drag-to-Applications disk image
 - `Penopta-Sync.json` — `{ version, build, downloadPath, notes, publishedAt }` for soft update checks

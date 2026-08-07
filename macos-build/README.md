@@ -12,4 +12,4 @@
 # Same hash → nothing to ship. New content requires a new Version and a
 # higher Build in Xcode so installed apps update.
 #
-# Do not commit the .app — only the zip + json under public/downloads/ ship.
+# Do not commit the .app — only the dmg + json under public/downloads/ ship.

@@ -8,21 +8,6 @@ import type { ProviderProjectProvider } from "@/lib/integrations/provider-projec
 import { PENOPTA_SYNC_AGENT_ID } from "@/lib/integrations/provider-projects-data";
 import { getPublicAppUrl } from "@/lib/integrations/providers";
 
-/**
- * Served from `public/downloads/Penopta-Sync.zip` in this repo by default.
- * Override with PENOPTA_SYNC_DOWNLOAD_URL only if the zip is hosted elsewhere.
- */
-export function getPenoptaSyncDownloadUrl(): string {
-  const explicit = process.env.PENOPTA_SYNC_DOWNLOAD_URL?.trim();
-  if (explicit) return explicit;
-  return `${getPublicAppUrl()}/downloads/Penopta-Sync.zip`;
-}
-
-/** Soft-update manifest next to the zip (`scripts/publish-download.sh` writes it). */
-export function getPenoptaSyncManifestUrl(): string {
-  return `${getPublicAppUrl()}/downloads/Penopta-Sync.json`;
-}
-
 export type PenoptaSyncRelease = {
   version: string;
   build: number;
@@ -33,6 +18,34 @@ export type PenoptaSyncRelease = {
   notes?: string;
   publishedAt?: string;
 };
+
+/**
+ * Served from `public/downloads/Penopta-Sync.dmg` in this repo by default.
+ * Override with PENOPTA_SYNC_DOWNLOAD_URL only if the DMG is hosted elsewhere.
+ * When a release manifest is passed, prefer its `downloadUrl` / `downloadPath`
+ * so older publishes (zip) keep working until the next `macos:publish`.
+ */
+export function getPenoptaSyncDownloadUrl(
+  release?: PenoptaSyncRelease | null,
+): string {
+  const explicit = process.env.PENOPTA_SYNC_DOWNLOAD_URL?.trim();
+  if (explicit) return explicit;
+  const absolute = release?.downloadUrl?.trim();
+  if (absolute) return absolute;
+  const downloadPath = release?.downloadPath?.trim();
+  if (downloadPath) {
+    const normalized = downloadPath.startsWith("/")
+      ? downloadPath
+      : `/${downloadPath}`;
+    return `${getPublicAppUrl()}${normalized}`;
+  }
+  return `${getPublicAppUrl()}/downloads/Penopta-Sync.dmg`;
+}
+
+/** Soft-update manifest next to the DMG (`npm run macos:publish` writes it). */
+export function getPenoptaSyncManifestUrl(): string {
+  return `${getPublicAppUrl()}/downloads/Penopta-Sync.json`;
+}
 
 /** Latest published macOS app version from `public/downloads/Penopta-Sync.json`. */
 export async function getPenoptaSyncRelease(): Promise<PenoptaSyncRelease | null> {
@@ -78,8 +91,9 @@ export const macosIntegration = {
     "Penopta Sync is a menu-bar app for Mac. It reads local Claude Code, Codex, and Cursor sessions you choose, then uploads them to your Penopta org with the same private-prefix skip rules (P: / Private:). Once signed in with folder access, it syncs about once an hour while the app stays in the menu bar (you can still press Sync anytime).",
   iconBg: "bg-black",
   steps: [
-    "Download **Penopta Sync** for macOS (a zip), then unzip it.",
-    "In Finder, **Right-click** (or Control-click) **Penopta Sync.app** → **Open**. Don’t double-click the first time — macOS blocks unsigned downloads that way.",
+    "Download **Penopta Sync** for macOS (a disk image).",
+    "Open the DMG, then **drag Penopta Sync into Applications**.",
+    "In Finder → Applications, **Right-click** (or Control-click) **Penopta Sync** → **Open**. Don’t double-click the first time — macOS blocks unsigned downloads that way.",
     "If macOS still says it can’t be opened, go to **System Settings → Privacy & Security**, scroll to the message about Penopta Sync, and click **Open Anyway**. Confirm with **Open** when asked.",
     "Sign in with Penopta from the menu-bar panel (use the same account as this workspace).",
     "Grant folder access for **Claude Code**, **Codex**, and/or **Cursor**, then press **Sync** (or wait for the hourly auto-sync).",
@@ -88,7 +102,7 @@ export const macosIntegration = {
   notes: [
     "This app is not from the Mac App Store, so Gatekeeper may warn once. After you Open / Open Anyway, normal launches work.",
     "Keep Penopta Sync in the menu bar for hourly auto-sync. Turn it off under Connection → Sync every hour if you only want manual Sync.",
-    "The app checks Penopta for a newer build on launch and every few hours. Connection → Check for updates also works; Download opens the zip — replace the app after unzipping.",
+    "The app checks Penopta for a newer build on launch and every few hours. Connection → Check for updates also works; Download opens the DMG — drag the new app into Applications to replace it.",
     "Release builds default to https://app.penopta.com. Override Penopta URL in Connection (gear) for local or stage — this workspace is " +
       getPublicAppUrl() +
       ".",
@@ -99,7 +113,7 @@ export const macosIntegration = {
 const MACOS_INSTALL_HELP_PROMPT = [
   "Walk me through installing and setting up Penopta Sync on macOS.",
   "Penopta Sync is a menu-bar app (not from the Mac App Store) that syncs local Claude Code, Codex, and Cursor sessions into Penopta.",
-  "I will download a zip, unzip it, then open Penopta Sync.app.",
+  "I will download a DMG, open it, and drag Penopta Sync into Applications.",
   "Because it is unsigned/not notarized yet, macOS Gatekeeper may block it: I should Right-click → Open the first time, and if still blocked go to System Settings → Privacy & Security → Open Anyway.",
   "Then I sign in with the same Penopta account as the web app, grant folder access for Claude Code, Codex, and/or Cursor, and press Sync (or leave the app running for hourly auto-sync).",
   "macOS UI labels may have changed — show me the current steps and where each setting lives.",

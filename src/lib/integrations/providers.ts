@@ -300,7 +300,7 @@ export function listIntegrationProviders(): IntegrationProvider[] {
       macosOnly: true,
       mcpSteps: [],
       steps: [
-        "Install **Penopta Sync** from the macOS integration page (download the zip, then Right-click → Open the first time).",
+        "Install **Penopta Sync** from the macOS integration page (open the DMG, drag to Applications, then Right-click → Open the first time).",
         "Sign in with the same Penopta account you use here.",
         "Grant folder access to **~/.cursor**, then press **Sync** (or leave the app running for hourly auto-sync).",
         "Return here — once a sync lands, this integration shows as connected and Cursor projects appear below.",
