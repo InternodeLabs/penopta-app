@@ -63,5 +63,12 @@ export async function approveAuthorization(
   const target = new URL(redirectUri);
   target.searchParams.set("code", code);
   if (state) target.searchParams.set("state", state);
+  // Local native clients (Penopta Sync loopback) show who signed in.
+  // Keep email off remote redirect URIs so it does not land in third-party logs.
+  const isLoopback =
+    target.hostname === "127.0.0.1" || target.hostname === "localhost";
+  if (isLoopback && session.user.email) {
+    target.searchParams.set("email", session.user.email);
+  }
   return { error: null, redirectTo: target.toString() };
 }
