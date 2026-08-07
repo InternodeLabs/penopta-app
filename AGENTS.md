@@ -36,6 +36,9 @@ Deeper rationale: [`docs/architecture.md`](docs/architecture.md). Human how-to: 
   `agent_sync_run` + upserts `agent_thread` (+ snapshots), all stamped with the
   resolved `org_id`. OAuth uses the user's **active** org at request time; API
   keys use the org stamped at mint.
+- Any org member can add/remove **their own** agent threads on a visible project
+  in the active org. Other members' links are left alone. Project rename /
+  delete / visibility stay owner-only.
 - MCP also exposes `penopta_track_thread` for on-demand single-thread pushes
   (live “track this chat”); it wraps the same ingest path. `penopta_sync_now`
   force-starts a full tracked-project sync in live chat (returns window +

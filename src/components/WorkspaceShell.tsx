@@ -47,15 +47,21 @@ export function WorkspaceShell({
 
         <div className="px-3 pt-3">
           <AddProjectButton
-            enabled={threads.length >= 2}
-            threads={threads.map((thread) => ({
-              id: thread.id,
-              title: thread.title,
-              lastAgentName: thread.lastAgentName,
-              status: thread.status,
-              ownerName:
-                ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
-            }))}
+            enabled={
+              threads.filter((thread) => thread.ownerUserId === user.id)
+                .length >= 2
+            }
+            threads={threads
+              .filter((thread) => thread.ownerUserId === user.id)
+              .map((thread) => ({
+                id: thread.id,
+                title: thread.title,
+                lastAgentName: thread.lastAgentName,
+                status: thread.status,
+                ownerName:
+                  ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
+                ownerUserId: thread.ownerUserId,
+              }))}
           />
         </div>
 

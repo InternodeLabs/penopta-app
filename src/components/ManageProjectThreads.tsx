@@ -13,25 +13,34 @@ export type ThreadOption = {
   lastAgentName: string;
   status: string;
   ownerName: string;
+  ownerUserId: string;
 };
 
-/** Sidebar control + dialog to choose which agent threads belong to a project. */
+/** Sidebar control + dialog to choose which of your agent threads belong to a project. */
 export function ManageProjectThreads({
   projectId,
   threads,
   selectedIds,
+  currentUserId,
 }: {
   projectId: string;
   threads: ThreadOption[];
   selectedIds: string[];
+  currentUserId: string;
 }) {
   const router = useRouter();
+  const myThreads = threads.filter(
+    (thread) => thread.ownerUserId === currentUserId,
+  );
+  const mySelectedIds = selectedIds.filter((id) =>
+    myThreads.some((thread) => thread.id === id),
+  );
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set(selectedIds));
+  const [selected, setSelected] = useState<Set<string>>(new Set(mySelectedIds));
   const [pending, startTransition] = useTransition();
 
   function openDialog() {
-    setSelected(new Set(selectedIds));
+    setSelected(new Set(mySelectedIds));
     setOpen(true);
   }
 
@@ -70,8 +79,8 @@ export function ManageProjectThreads({
       <button
         type="button"
         onClick={openDialog}
-        aria-label="Add threads"
-        title="Add threads"
+        aria-label="Add your threads"
+        title="Add your threads"
         className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-foreground"
       >
         <Plus aria-hidden className="h-3.5 w-3.5" />
@@ -82,7 +91,7 @@ export function ManageProjectThreads({
           className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Add threads to project"
+          aria-label="Add your threads to project"
           onClick={close}
         >
           <div
@@ -91,21 +100,23 @@ export function ManageProjectThreads({
           >
             <div className="border-b border-border px-6 py-4">
               <h2 className="text-lg font-semibold tracking-tight">
-                Add threads
+                Add your threads
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Choose which agent threads are part of this project.
+                Choose which of your agent threads are part of this project.
+                Other members manage their own.
               </p>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-              {threads.length === 0 ? (
+              {myThreads.length === 0 ? (
                 <p className="px-3 py-6 text-center text-sm text-muted">
-                  No agent threads yet. Connect an agent to get started.
+                  No agent threads of yours yet. Connect an agent to get
+                  started.
                 </p>
               ) : (
                 <ul className="space-y-0.5">
-                  {threads.map((thread) => {
+                  {myThreads.map((thread) => {
                     const checked = selected.has(thread.id);
                     return (
                       <li key={thread.id}>
@@ -121,8 +132,7 @@ export function ManageProjectThreads({
                               {thread.title || "Untitled thread"}
                             </span>
                             <span className="mt-0.5 block truncate text-[11px] text-muted">
-                              {thread.ownerName} · {thread.lastAgentName} ·{" "}
-                              {thread.status}
+                              {thread.lastAgentName} · {thread.status}
                             </span>
                           </span>
                         </label>

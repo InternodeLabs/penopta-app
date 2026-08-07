@@ -23,13 +23,17 @@ export function WorkspaceEmpty({
   projects?: ProjectRow[];
   ownerNames?: Record<string, string>;
 }) {
-  const canStartProject = threads.length >= 2;
-  const threadOptions = threads.map((thread) => ({
+  const myThreads = threads.filter(
+    (thread) => thread.ownerUserId === user.id,
+  );
+  const canStartProject = myThreads.length >= 2;
+  const threadOptions = myThreads.map((thread) => ({
     id: thread.id,
     title: thread.title,
     lastAgentName: thread.lastAgentName,
     status: thread.status,
     ownerName: ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
+    ownerUserId: thread.ownerUserId,
   }));
 
   return (
@@ -52,13 +56,13 @@ export function WorkspaceEmpty({
               strokeWidth={1.5}
             />
             <h1 className="mt-4 text-lg font-semibold tracking-tight">
-              {threads.length === 1
+              {myThreads.length === 1
                 ? "Need one more thread"
                 : "Start collaborating"}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              {threads.length === 1
-                ? "Projects need at least two agent threads. Connect another agent or sync another conversation."
+              {myThreads.length === 1
+                ? "Projects need at least two of your agent threads. Connect another agent or sync another conversation."
                 : "Connect your chat to start collaborating with others via your agents."}
             </p>
             <Link

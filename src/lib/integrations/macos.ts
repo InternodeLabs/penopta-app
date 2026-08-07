@@ -89,9 +89,9 @@ export const macosIntegration = {
     "This app is not from the Mac App Store, so Gatekeeper may warn once. After you Open / Open Anyway, normal launches work.",
     "Keep Penopta Sync in the menu bar for hourly auto-sync. Turn it off under Connection → Sync every hour if you only want manual Sync.",
     "The app checks Penopta for a newer build on launch and every few hours. Connection → Check for updates also works; Download opens the zip — replace the app after unzipping.",
-    "Point the app at this Penopta URL if you are not on production: " +
+    "Release builds default to https://app.penopta.com. Override Penopta URL in Connection (gear) for local or stage — this workspace is " +
       getPublicAppUrl() +
-      " (Connection settings in the gear).",
+      ".",
     "Sessions titled or living under projects prefixed with P: or Private: are never uploaded.",
   ],
 };

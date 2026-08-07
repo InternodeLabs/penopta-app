@@ -51,7 +51,7 @@ export function NewProjectDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (selected.size < MIN_THREADS) {
-      toast.error("Select at least two agent threads.");
+      toast.error("Select at least two of your agent threads.");
       return;
     }
     startTransition(async () => {
@@ -93,7 +93,7 @@ export function NewProjectDialog({
             Start a project
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Name your project and pick at least two agent threads.
+            Name your project and pick at least two of your agent threads.
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export function NewProjectDialog({
           </div>
 
           <p className="mt-5 text-sm font-medium text-foreground">
-            Agent threads
+            Your agent threads
             <span className="ml-1.5 font-normal text-muted">
               ({selected.size} selected · {MIN_THREADS} required)
             </span>
@@ -131,7 +131,7 @@ export function NewProjectDialog({
 
           {threads.length === 0 ? (
             <p className="mt-3 text-sm text-muted">
-              No agent threads yet. Connect an agent to get started.
+              No agent threads of yours yet. Connect an agent to get started.
             </p>
           ) : (
             <ul className="mt-2 space-y-0.5">
@@ -151,8 +151,7 @@ export function NewProjectDialog({
                           {thread.title || "Untitled thread"}
                         </span>
                         <span className="mt-0.5 block truncate text-[11px] text-muted">
-                          {thread.ownerName} · {thread.lastAgentName} ·{" "}
-                          {thread.status}
+                          {thread.lastAgentName} · {thread.status}
                         </span>
                       </span>
                     </label>

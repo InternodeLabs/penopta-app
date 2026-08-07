@@ -9,6 +9,7 @@ import { getSession } from "@/lib/auth/server";
 import { db } from "@/lib/db/client";
 import { agentThreads, projects, projectThreads } from "@/lib/db/schema";
 import { resolveActiveOrg } from "@/lib/orgs/data";
+import { getVisibleProject } from "@/lib/projects/data";
 
 export type ProjectVisibility = "public" | "private";
 
@@ -47,24 +48,26 @@ export async function createProjectAction(
 
   const unique = Array.from(new Set(threadIds));
   if (unique.length < 2) {
-    return { ok: false, error: "Select at least two agent threads." };
+    return { ok: false, error: "Select at least two of your agent threads." };
   }
 
   try {
     const { activeOrg } = await resolveActiveOrg(session.user.id);
 
+    // New projects can only include the creator's own threads.
     const valid = await db
       .select({ id: agentThreads.id })
       .from(agentThreads)
       .where(
         and(
           eq(agentThreads.orgId, activeOrg.id),
+          eq(agentThreads.ownerUserId, session.user.id),
           inArray(agentThreads.id, unique),
         ),
       );
     const validIds = valid.map((t) => t.id);
     if (validIds.length < 2) {
-      return { ok: false, error: "Select at least two agent threads." };
+      return { ok: false, error: "Select at least two of your agent threads." };
     }
 
     let slug = slugify(trimmed);
@@ -229,8 +232,9 @@ export type SetProjectThreadsState =
   | { ok: false; error: string };
 
 /**
- * Replace the set of agent threads on a project the current user owns.
- * Only threads within the same org are accepted; unknown ids are ignored.
+ * Replace the current user's agent threads on a visible org project.
+ * Other members' thread links are left untouched. Only the caller's own
+ * threads in the active org are accepted; unknown ids are ignored.
  */
 export async function setProjectThreadsAction(
   projectId: string,
@@ -242,17 +246,11 @@ export async function setProjectThreadsAction(
   try {
     const { activeOrg } = await resolveActiveOrg(session.user.id);
 
-    const [project] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(
-        and(
-          eq(projects.id, projectId),
-          eq(projects.orgId, activeOrg.id),
-          eq(projects.ownerUserId, session.user.id),
-        ),
-      )
-      .limit(1);
+    const project = await getVisibleProject(
+      projectId,
+      activeOrg.id,
+      session.user.id,
+    );
     if (!project) return { ok: false, error: "Project not found." };
 
     const unique = Array.from(new Set(threadIds));
@@ -263,16 +261,38 @@ export async function setProjectThreadsAction(
           .where(
             and(
               eq(agentThreads.orgId, activeOrg.id),
+              eq(agentThreads.ownerUserId, session.user.id),
               inArray(agentThreads.id, unique),
             ),
           )
       : [];
     const validIds = valid.map((t) => t.id);
 
-    // Delete-then-insert (kept non-transactional for neon-http compatibility).
-    await db
-      .delete(projectThreads)
-      .where(eq(projectThreads.projectId, projectId));
+    // Only rewrite this user's links (neon-http: keep delete+insert separate).
+    const myLinks = await db
+      .select({ id: projectThreads.id })
+      .from(projectThreads)
+      .innerJoin(
+        agentThreads,
+        eq(agentThreads.id, projectThreads.agentThreadId),
+      )
+      .where(
+        and(
+          eq(projectThreads.projectId, projectId),
+          eq(agentThreads.ownerUserId, session.user.id),
+        ),
+      );
+
+    if (myLinks.length > 0) {
+      await db
+        .delete(projectThreads)
+        .where(
+          inArray(
+            projectThreads.id,
+            myLinks.map((row) => row.id),
+          ),
+        );
+    }
     if (validIds.length > 0) {
       await db.insert(projectThreads).values(
         validIds.map((agentThreadId) => ({

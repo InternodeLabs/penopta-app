@@ -22,8 +22,8 @@ export function StartProjectModal({ threads }: { threads: ThreadOption[] }) {
           Start a project
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Group at least two agent threads into a project to organize and share
-          the work.
+          Group at least two of your agent threads into a project to organize and
+          share the work.
         </p>
         <button
           type="button"

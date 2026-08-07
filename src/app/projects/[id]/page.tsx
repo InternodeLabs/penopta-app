@@ -117,6 +117,7 @@ export default async function ProjectDetailPage({
             </p>
             <ManageProjectThreads
               projectId={project.id}
+              currentUserId={user.id}
               threads={orgThreads.map((thread) => ({
                 id: thread.id,
                 title: thread.title,
@@ -124,6 +125,7 @@ export default async function ProjectDetailPage({
                 status: thread.status,
                 ownerName:
                   ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
+                ownerUserId: thread.ownerUserId,
               }))}
               selectedIds={threads.map((thread) => thread.id)}
             />
