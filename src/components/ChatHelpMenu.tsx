@@ -77,12 +77,10 @@ export function ChatHelpMenu({
         <div
           id={menuId}
           role="menu"
-          className="absolute left-0 z-10 mt-2 min-w-[11rem] overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-sm"
+          className="absolute left-0 z-10 mt-2 min-w-44 overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-sm"
         >
           {options.map((option) => {
-            const Icon = option.provider
-              ? OPTION_ICONS[option.provider]
-              : null;
+            const Icon = option.provider ? OPTION_ICONS[option.provider] : null;
             return (
               <a
                 key={option.href}
@@ -95,7 +93,7 @@ export function ChatHelpMenu({
               >
                 {Icon ? (
                   <span aria-hidden className="inline-flex shrink-0">
-                    <Icon className="size-3.5 !fill-current" />
+                    <Icon className="size-3.5 fill-current!" />
                   </span>
                 ) : null}
                 {option.label}

@@ -80,7 +80,7 @@ export function McpCommandPlayMenu({ command }: { command: string }) {
         <div
           id={menuId}
           role="menu"
-          className="absolute top-full left-0 z-20 mt-1 min-w-[12.5rem] overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-sm"
+          className="absolute top-full left-0 z-20 mt-1 min-w-50 overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-sm"
         >
           <a
             role="menuitem"
@@ -90,7 +90,10 @@ export function McpCommandPlayMenu({ command }: { command: string }) {
             className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground transition hover:bg-zinc-50"
             onClick={() => setOpen(false)}
           >
-            <Anthropic className="size-3.5 shrink-0 !fill-current" aria-hidden />
+            <Anthropic
+              className="size-3.5 shrink-0 fill-current!"
+              aria-hidden
+            />
             Run in Claude
           </a>
           <a
@@ -101,7 +104,7 @@ export function McpCommandPlayMenu({ command }: { command: string }) {
             className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground transition hover:bg-zinc-50"
             onClick={() => setOpen(false)}
           >
-            <OpenAI className="size-3.5 shrink-0 !fill-current" aria-hidden />
+            <OpenAI className="size-3.5 shrink-0 fill-current!" aria-hidden />
             Run in ChatGPT
           </a>
           <button
@@ -111,7 +114,10 @@ export function McpCommandPlayMenu({ command }: { command: string }) {
             onClick={copyCommand}
           >
             {copied ? (
-              <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+              <Check
+                className="size-3.5 shrink-0 text-emerald-600"
+                aria-hidden
+              />
             ) : (
               <Copy className="size-3.5 shrink-0" aria-hidden />
             )}

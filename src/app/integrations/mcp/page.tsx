@@ -159,7 +159,7 @@ export default async function McpIntegrationPage() {
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+            <table className="w-full min-w-xl border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-zinc-50/80 text-xs font-semibold tracking-wide text-muted uppercase">
                   <th scope="col" className="px-3 py-2.5 font-semibold">
