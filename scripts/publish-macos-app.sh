@@ -4,8 +4,8 @@
 #
 # Change detection: MD5 of the .app bundle contents vs `contentMd5` in the
 # last published Penopta-Sync.json. Same hash → nothing to publish.
-# When content changes, marketing Version must be higher than the last
-# publish. Build is scoped to that Version (it may stay the same or reset).
+# When content changes, (Version, Build) must be newer than the last publish:
+#   higher Version wins (Build may stay/reset), or same Version with higher Build.
 #
 # Usage (from penopta-app):
 #   npm run macos:publish
@@ -66,13 +66,13 @@ $reason
 Steps:
   1. Open: $SYNC_REPO/Penopta Sync.xcodeproj
   2. Select the Penopta Sync target → General
-  3. Bump Version (Marketing) — must be higher than the last published version
-  4. Set Build (Current Project Version) as you like for that Version
-     (Build may stay the same or reset; Version is what marks a newer release)
-  5. Product → Build (⌘B), or Archive + Export
-  6. Copy the built Penopta Sync.app into:
+  3. Bump Version and/or Build so the release is newer than what’s published:
+       • higher Version (Build may stay/reset), or
+       • same Version with a higher Build
+  4. Product → Build (⌘B), or Archive + Export
+  5. Copy the built Penopta Sync.app into:
        $DROP_DIR/
-  7. Re-run:
+  6. Re-run:
        npm run macos:publish${NOTES:+ -- --notes \"$NOTES\"}
 
 Tip: In Xcode, Products → Penopta Sync.app → Show in Finder, then copy.
@@ -182,7 +182,7 @@ No change detected — this .app matches the last published content.
   contentMd5: $APP_MD5
   published:  v${PUBLISHED_VERSION:-?} (build ${PUBLISHED_BUILD})
 
-Rebuild in Xcode with your changes, bump Version, copy the new .app to:
+Rebuild in Xcode with your changes, bump Version and/or Build, copy the new .app to:
   $DEFAULT_APP
 Then re-run:
   npm run macos:publish
@@ -190,9 +190,9 @@ EOF
   exit 1
 fi
 
-# Content changed → marketing Version must advance. Build is per-version.
-version_is_newer() {
-  python3 - "$1" "$2" <<'PY'
+# Content changed → (Version, Build) must be strictly newer than last publish.
+release_is_newer() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
 import sys
 
 def parts(v: str):
@@ -204,23 +204,35 @@ def parts(v: str):
             out.append(0)
     return out
 
-a, b = parts(sys.argv[1]), parts(sys.argv[2])
-n = max(len(a), len(b))
-a += [0] * (n - len(a))
-b += [0] * (n - len(b))
-sys.exit(0 if a > b else 1)
+def cmp_version(a: str, b: str) -> int:
+    pa, pb = parts(a), parts(b)
+    n = max(len(pa), len(pb))
+    pa += [0] * (n - len(pa))
+    pb += [0] * (n - len(pb))
+    if pa > pb:
+        return 1
+    if pa < pb:
+        return -1
+    return 0
+
+app_version, app_build, pub_version, pub_build = sys.argv[1:5]
+app_build_i = int(app_build or 0)
+pub_build_i = int(pub_build or 0)
+ver_cmp = cmp_version(app_version, pub_version)
+newer = ver_cmp > 0 or (ver_cmp == 0 and app_build_i > pub_build_i)
+sys.exit(0 if newer else 1)
 PY
 }
 
-if [[ -n "$PUBLISHED_VERSION" ]] && ! version_is_newer "$APP_VERSION" "$PUBLISHED_VERSION"; then
+if [[ -n "$PUBLISHED_VERSION" ]] && ! release_is_newer "$APP_VERSION" "$APP_BUILD" "$PUBLISHED_VERSION" "$PUBLISHED_BUILD"; then
   print_xcode_instructions \
-    "Content changed (new md5), but Version is not higher than what’s published.
+    "Content changed (new md5), but this release is not newer than what’s published.
   Dropped app:       v${APP_VERSION} (build ${APP_BUILD})  md5 ${APP_MD5}
   Already published: v${PUBLISHED_VERSION} (build ${PUBLISHED_BUILD})  md5 ${PUBLISHED_MD5:-none}
 
-In Xcode → Penopta Sync target → General:
-  • Bump Version above ${PUBLISHED_VERSION} (e.g. next marketing release)
-  • Build may stay the same or reset — it is scoped to that Version
+In Xcode → Penopta Sync target → General, make it newer by either:
+  • Bumping Version above ${PUBLISHED_VERSION} (Build may stay/reset), or
+  • Keeping Version ${PUBLISHED_VERSION} and bumping Build above ${PUBLISHED_BUILD}
 Then rebuild, copy the .app into the drop folder, and re-run npm run macos:publish."
   exit 1
 fi
