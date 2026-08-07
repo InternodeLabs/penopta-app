@@ -21,21 +21,22 @@ export const macosIntegration = {
   name: "MacOS",
   byline: "Penopta Sync",
   description:
-    "The macOS app lets you sync the threads you choose that are unavailable to skills or mcp agents.",
+    "The macOS app syncs local Claude Code and Codex sessions that skills and MCP agents can’t see — hourly in the background while it runs, or on demand.",
   setupTitle: "Install Penopta Sync",
   intro:
-    "Penopta Sync is a menu-bar app for Mac. It reads local Claude Code and Codex sessions you choose, then uploads them to your Penopta org with the same private-prefix skip rules (P: / Private:).",
+    "Penopta Sync is a menu-bar app for Mac. It reads local Claude Code and Codex sessions you choose, then uploads them to your Penopta org with the same private-prefix skip rules (P: / Private:). Once signed in with folder access, it syncs about once an hour while the app stays in the menu bar (you can still press Sync anytime).",
   iconBg: "bg-black",
   steps: [
     "Download **Penopta Sync** for macOS (a zip), then unzip it.",
     "In Finder, **Right-click** (or Control-click) **Penopta Sync.app** → **Open**. Don’t double-click the first time — macOS blocks unsigned downloads that way.",
     "If macOS still says it can’t be opened, go to **System Settings → Privacy & Security**, scroll to the message about Penopta Sync, and click **Open Anyway**. Confirm with **Open** when asked.",
     "Sign in with Penopta from the menu-bar panel (use the same account as this workspace).",
-    "Grant folder access for **Claude Code** and/or **Codex**, then press **Sync**.",
+    "Grant folder access for **Claude Code** and/or **Codex**, then press **Sync** (or wait for the hourly auto-sync).",
     "Return here — once a sync lands, this integration shows as installed.",
   ],
   notes: [
     "This app is not from the Mac App Store, so Gatekeeper may warn once. After you Open / Open Anyway, normal launches work.",
+    "Keep Penopta Sync in the menu bar for hourly auto-sync. Turn it off under Connection → Sync every hour if you only want manual Sync.",
     "Point the app at this Penopta URL if you are not on production: " +
       getPublicAppUrl() +
       " (Connection settings in the gear).",
@@ -48,7 +49,7 @@ const MACOS_INSTALL_HELP_PROMPT = [
   "Penopta Sync is a menu-bar app (not from the Mac App Store) that syncs local Claude Code and Codex sessions into Penopta.",
   "I will download a zip, unzip it, then open Penopta Sync.app.",
   "Because it is unsigned/not notarized yet, macOS Gatekeeper may block it: I should Right-click → Open the first time, and if still blocked go to System Settings → Privacy & Security → Open Anyway.",
-  "Then I sign in with the same Penopta account as the web app, grant folder access for Claude Code and/or Codex, and press Sync.",
+  "Then I sign in with the same Penopta account as the web app, grant folder access for Claude Code and/or Codex, and press Sync (or leave the app running for hourly auto-sync).",
   "macOS UI labels may have changed — show me the current steps and where each setting lives.",
 ].join(" ");
 
