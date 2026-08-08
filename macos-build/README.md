@@ -13,3 +13,4 @@
 # higher Build in Xcode so installed apps update.
 #
 # Do not commit the .app — only the dmg + json under public/downloads/ ship.
+# After a successful publish, the .app is removed from this folder automatically.

@@ -340,7 +340,7 @@ export const availableProviderProjects = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    /** Portal user who last registered/updated this catalog row. */
+    /** Auth user who first registered this catalog row (first writer wins). */
     ownerUserId: text("owner_user_id").notNull(),
     provider: text("provider", { enum: ["chatgpt", "claude", "cursor"] }).notNull(),
     /** Stable id from the provider, used to find the project again later. */

@@ -100,6 +100,61 @@ export async function listAvailableProviderProjects(
 }
 
 /**
+ * Source (provider) projects the user can add to a Penopta project: catalog
+ * rows they registered, plus any whose name/id matches one of their threads.
+ * Teammates only see them after someone links them into a shared Penopta project.
+ */
+export async function listMyAvailableProviderProjects(
+  orgId: string,
+  ownerUserId: string,
+): Promise<AvailableProviderProject[]> {
+  const contextRows = await db
+    .selectDistinct({ projectContext: agentThreads.projectContext })
+    .from(agentThreads)
+    .where(
+      and(
+        eq(agentThreads.orgId, orgId),
+        eq(agentThreads.ownerUserId, ownerUserId),
+        isNotNull(agentThreads.projectContext),
+        ne(agentThreads.projectContext, ""),
+      ),
+    );
+
+  const contexts = contextRows
+    .map((row) => row.projectContext?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  const contextMatch =
+    contexts.length > 0
+      ? or(
+          ...contexts.flatMap((context) => [
+            eq(availableProviderProjects.name, context),
+            eq(availableProviderProjects.externalProjectId, context),
+          ]),
+        )
+      : undefined;
+
+  const rows = await db
+    .select()
+    .from(availableProviderProjects)
+    .where(
+      and(
+        eq(availableProviderProjects.orgId, orgId),
+        contextMatch
+          ? or(
+              eq(availableProviderProjects.ownerUserId, ownerUserId),
+              contextMatch,
+            )
+          : eq(availableProviderProjects.ownerUserId, ownerUserId),
+      ),
+    )
+    .orderBy(asc(availableProviderProjects.name));
+
+  const kept = await deletePrivateCatalogRows(rows);
+  return kept.map(toPublic);
+}
+
+/**
  * Seed the available-projects catalog from projects already seen on synced
  * agent threads. First source to land data (Penopta Sync or the scheduled
  * skill) is enough to populate the integrations page.
@@ -288,7 +343,7 @@ export async function makeProviderProjectsAvailable(
             projectCreatedAt ?? existing[0].projectCreatedAt ?? null,
           // First writer wins; backfill only when missing.
           source: existing[0].source ?? source,
-          ownerUserId,
+          // Keep the original registrant — do not steal ownership on re-sync.
           updatedAt: now,
         })
         .where(eq(availableProviderProjects.id, existing[0].id))

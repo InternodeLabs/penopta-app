@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publish a Xcode-built Penopta Sync.app into public/downloads/ (DMG + version
 # manifest). Does not build — you build in Xcode, drop the .app here, then run.
+# On success, removes the .app from macos-build/ so the drop folder is clean.
 #
 # Change detection: MD5 of the .app bundle contents vs `contentMd5` in the
 # last published Penopta-Sync.json. Same hash → nothing to publish.
@@ -302,12 +303,28 @@ cat > "$DEST_JSON" <<EOF
 }
 EOF
 
+# Drop folder is only a staging area; remove the .app after a successful publish
+# so the next version starts clean. Leave APP_PATH alone if it was overridden
+# to somewhere outside macos-build/.
+case "$APP_PATH" in
+  "$DROP_DIR"/*|"$DROP_DIR")
+    rm -rf "$APP_PATH"
+    CLEANED_DROP=1
+    ;;
+  *)
+    CLEANED_DROP=0
+    ;;
+esac
+
 echo ""
 echo "Published v${APP_VERSION} (build ${APP_BUILD})"
 echo "  contentMd5 $APP_MD5"
 echo "  from $APP_PATH"
 echo "  $DEST_DMG ($(du -h "$DEST_DMG" | awk '{print $1}'))"
 echo "  $DEST_JSON"
+if [[ "$CLEANED_DROP" -eq 1 ]]; then
+  echo "  cleaned drop folder (removed $APP_NAME)"
+fi
 echo ""
 echo "Next: commit public/downloads/Penopta-Sync.{dmg,json} (and delete the old .zip if present), then deploy."
 if [[ "$NOTES_SET" -eq 0 ]]; then

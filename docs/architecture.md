@@ -111,7 +111,10 @@ single-thread push (live “track this chat,” including standalone threads).
 - All project routes require a session. Logged-out users are sent to sign-in.
 - Reads are scoped to the viewer's **active org**. Within that org a project is
   visible if `visibility = 'public'` **or** `owner_user_id = viewer`.
-- Agent threads are org-scoped: every member of the active org sees them.
+- Home sidebar agent threads are **owner-scoped** (only the current user's).
+  Source projects in create/add pickers are also owner-scoped (registered by
+  the user, or matching one of their thread contexts). Once linked into a
+  Penopta project, any org member who can see that project sees the mixed set.
 - URL param `/projects/[id]` accepts the project UUID (or slug).
 
 ## Hosting split

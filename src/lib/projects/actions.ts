@@ -9,11 +9,11 @@ import { getSession } from "@/lib/auth/server";
 import { db } from "@/lib/db/client";
 import {
   agentThreads,
-  availableProviderProjects,
   projects,
   projectSourceProjects,
   projectThreads,
 } from "@/lib/db/schema";
+import { listMyAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { getVisibleProject } from "@/lib/projects/data";
 
@@ -86,19 +86,14 @@ export async function createProjectAction(
         : [];
     const validThreadIds = validThreads.map((t) => t.id);
 
-    const validSources =
-      uniqueSources.length > 0
-        ? await db
-            .select({ id: availableProviderProjects.id })
-            .from(availableProviderProjects)
-            .where(
-              and(
-                eq(availableProviderProjects.orgId, activeOrg.id),
-                inArray(availableProviderProjects.id, uniqueSources),
-              ),
-            )
-        : [];
-    const validSourceIds = validSources.map((s) => s.id);
+    // New projects can only include the creator's own source projects
+    // (registered by them, or matching one of their thread contexts).
+    const mySources = await listMyAvailableProviderProjects(
+      activeOrg.id,
+      session.user.id,
+    );
+    const mySourceIds = new Set(mySources.map((s) => s.id));
+    const validSourceIds = uniqueSources.filter((id) => mySourceIds.has(id));
 
     if (validSourceIds.length === 0 && validThreadIds.length < 2) {
       return {
@@ -371,7 +366,9 @@ export type SetProjectSourceProjectsState =
   | { ok: false; error: string };
 
 /**
- * Replace source (provider) projects linked into a visible Penopta project.
+ * Replace the current user's source (provider) projects on a visible Penopta
+ * project. Other members' source links are left untouched. Only sources the
+ * caller can claim (registered by them or matching their threads) are accepted.
  * Matching agent threads are included automatically via virtual membership.
  */
 export async function setProjectSourceProjectsAction(
@@ -392,44 +389,67 @@ export async function setProjectSourceProjectsAction(
     if (!project) return { ok: false, error: "Project not found." };
 
     const unique = Array.from(new Set(sourceProjectIds));
-    const valid = unique.length
-      ? await db
-          .select({ id: availableProviderProjects.id })
-          .from(availableProviderProjects)
-          .where(
-            and(
-              eq(availableProviderProjects.orgId, activeOrg.id),
-              inArray(availableProviderProjects.id, unique),
-            ),
-          )
-      : [];
-    const validIds = valid.map((s) => s.id);
+    const mySources = await listMyAvailableProviderProjects(
+      activeOrg.id,
+      session.user.id,
+    );
+    const mySourceIds = new Set(mySources.map((s) => s.id));
+    const validIds = unique.filter((id) => mySourceIds.has(id));
 
-    const existing = await db
+    // Only rewrite this user's links (same pattern as setProjectThreadsAction).
+    const myLinks = await db
       .select({ id: projectSourceProjects.id })
       .from(projectSourceProjects)
-      .where(eq(projectSourceProjects.projectId, projectId));
+      .where(
+        and(
+          eq(projectSourceProjects.projectId, projectId),
+          eq(projectSourceProjects.addedByUserId, session.user.id),
+        ),
+      );
 
-    if (existing.length > 0) {
+    if (myLinks.length > 0) {
       await db
         .delete(projectSourceProjects)
         .where(
           inArray(
             projectSourceProjects.id,
-            existing.map((row) => row.id),
+            myLinks.map((row) => row.id),
           ),
         );
     }
 
     if (validIds.length > 0) {
-      await db.insert(projectSourceProjects).values(
-        validIds.map((availableProviderProjectId) => ({
-          orgId: activeOrg.id,
-          projectId,
-          availableProviderProjectId,
-          addedByUserId: session.user.id,
-        })),
-      );
+      // Skip ids already linked by a teammate (unique on project+source).
+      const alreadyLinked =
+        validIds.length > 0
+          ? await db
+              .select({
+                id: projectSourceProjects.availableProviderProjectId,
+              })
+              .from(projectSourceProjects)
+              .where(
+                and(
+                  eq(projectSourceProjects.projectId, projectId),
+                  inArray(
+                    projectSourceProjects.availableProviderProjectId,
+                    validIds,
+                  ),
+                ),
+              )
+          : [];
+      const already = new Set(alreadyLinked.map((row) => row.id));
+      const toInsert = validIds.filter((id) => !already.has(id));
+
+      if (toInsert.length > 0) {
+        await db.insert(projectSourceProjects).values(
+          toInsert.map((availableProviderProjectId) => ({
+            orgId: activeOrg.id,
+            projectId,
+            availableProviderProjectId,
+            addedByUserId: session.user.id,
+          })),
+        );
+      }
     }
 
     revalidatePath(`/projects/${projectId}`);

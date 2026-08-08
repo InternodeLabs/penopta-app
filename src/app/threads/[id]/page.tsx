@@ -5,7 +5,7 @@ import { ThreadConversation } from "@/components/ThreadConversation";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
-import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
+import { listMyAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
 import {
   providerDisplayName,
   resolveSourceProjectLabel,
@@ -14,7 +14,6 @@ import { resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { listVisibleProjects } from "@/lib/projects/data";
 import { getAgentThread, listAgentThreads } from "@/lib/threads/data";
-import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
 export default async function ThreadPage({
   params,
@@ -28,15 +27,16 @@ export default async function ThreadPage({
   const { activeOrg, memberships } = await resolveActiveOrg(session.user.id);
 
   const [threads, thread, projects, availableSources] = await Promise.all([
-    listAgentThreads(activeOrg.id),
+    listAgentThreads(activeOrg.id, { ownerUserId: session.user.id }),
     getAgentThread(activeOrg.id, id),
     listVisibleProjects({ orgId: activeOrg.id, viewerUserId: session.user.id }),
-    listAvailableProviderProjects(activeOrg.id),
+    listMyAvailableProviderProjects(activeOrg.id, session.user.id),
   ]);
   if (!thread) notFound();
+  // Personal thread pages are owner-only; shared reading happens inside a
+  // Penopta project after someone links the thread.
+  if (thread.ownerUserId !== session.user.id) notFound();
 
-  const ownerNames = await resolveThreadOwnerNames(threads, session);
-  const ownerName = ownerNames[thread.ownerUserId] ?? thread.ownerUserId;
   const sourceProjectLabel = resolveSourceProjectLabel(
     thread.projectContext,
     availableSources.map((project) => ({
@@ -59,7 +59,6 @@ export default async function ThreadPage({
       threads={threads}
       projects={projects}
       sourceProjects={sourceProjects}
-      ownerNames={ownerNames}
       activeThreadId={thread.id}
     >
       <main className="flex min-h-0 flex-1 flex-col">
@@ -74,8 +73,7 @@ export default async function ThreadPage({
                 {" · "}
               </>
             ) : null}
-            {ownerName} · {thread.lastAgentName} · {thread.kind} ·{" "}
-            {thread.status} · synced{" "}
+            {thread.lastAgentName} · {thread.kind} · {thread.status} · synced{" "}
             {formatDistanceToNow(thread.lastSyncedAt, { addSuffix: true })}
           </p>
         </div>

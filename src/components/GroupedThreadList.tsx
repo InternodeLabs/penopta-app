@@ -39,14 +39,17 @@ export function GroupedThreadList({
   linkTarget,
   ownerNames = {},
   showMeta = false,
+  showOwner = false,
 }: {
   threads: GroupableThread[];
   catalog?: SourceCatalogEntry[];
   activeThreadId?: string | null;
   linkTarget: ThreadListLinkTarget;
   ownerNames?: Record<string, string>;
-  /** When true, show owner · status under each thread title. */
+  /** When true, show status (and optionally owner) under each thread title. */
   showMeta?: boolean;
+  /** When true with showMeta, prefix the subtext with the thread owner name. */
+  showOwner?: boolean;
 }) {
   const groups = useMemo(
     () => groupThreadsByProjectAndAgent(threads, catalog),
@@ -125,6 +128,7 @@ export function GroupedThreadList({
                         href={hrefForThread(linkTarget, thread.id)}
                         ownerNames={ownerNames}
                         showMeta={showMeta}
+                        showOwner={showOwner}
                       />
                     ))}
                   </ul>
@@ -161,14 +165,17 @@ function ThreadRow({
   href,
   ownerNames,
   showMeta,
+  showOwner,
 }: {
   thread: GroupableThread;
   active: boolean;
   href: string;
   ownerNames: Record<string, string>;
   showMeta: boolean;
+  showOwner: boolean;
 }) {
   const ownerName = ownerNames[thread.ownerUserId] ?? thread.ownerUserId;
+  const meta = showOwner ? `${ownerName} · ${thread.status}` : thread.status;
 
   return (
     <li>
@@ -185,9 +192,9 @@ function ThreadRow({
         {showMeta ? (
           <p
             className="mt-0.5 truncate text-[11px] text-muted"
-            title={ownerName}
+            title={showOwner ? ownerName : thread.status}
           >
-            {ownerName} · {thread.status}
+            {meta}
           </p>
         ) : null}
       </Link>

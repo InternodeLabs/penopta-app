@@ -120,7 +120,6 @@ export function WorkspaceShell({
             catalog={sourceCatalog}
             activeThreadId={activeThreadId}
             linkTarget={{ kind: "thread" }}
-            ownerNames={ownerNames}
             showMeta
           />
         </div>

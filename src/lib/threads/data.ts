@@ -9,14 +9,26 @@ import {
   type AgentThreadRow,
 } from "@/lib/db/schema";
 
-/** All agent threads in an org, most recently synced first. */
+/**
+ * Agent threads in an org, most recently synced first.
+ * Pass `ownerUserId` for the home/sidebar “mine only” lists; omit it for
+ * org-wide reads (e.g. project pickers that still filter client-side, MCP).
+ */
 export async function listAgentThreads(
   orgId: string,
+  opts?: { ownerUserId?: string },
 ): Promise<AgentThreadRow[]> {
+  const where = opts?.ownerUserId
+    ? and(
+        eq(agentThreads.orgId, orgId),
+        eq(agentThreads.ownerUserId, opts.ownerUserId),
+      )
+    : eq(agentThreads.orgId, orgId);
+
   return db
     .select()
     .from(agentThreads)
-    .where(eq(agentThreads.orgId, orgId))
+    .where(where)
     .orderBy(desc(agentThreads.lastSyncedAt));
 }
 
@@ -100,13 +112,21 @@ export async function listExplicitProjectThreadIds(
 /** Catalog ids of source projects linked into a Penopta project. */
 export async function listProjectSourceProjectIds(
   projectId: string,
+  opts?: { addedByUserId?: string },
 ): Promise<string[]> {
+  const where = opts?.addedByUserId
+    ? and(
+        eq(projectSourceProjects.projectId, projectId),
+        eq(projectSourceProjects.addedByUserId, opts.addedByUserId),
+      )
+    : eq(projectSourceProjects.projectId, projectId);
+
   const rows = await db
     .select({
       id: projectSourceProjects.availableProviderProjectId,
     })
     .from(projectSourceProjects)
-    .where(eq(projectSourceProjects.projectId, projectId));
+    .where(where);
   return rows.map((r) => r.id);
 }
 

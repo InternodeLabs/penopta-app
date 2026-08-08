@@ -20,7 +20,7 @@ import { loginStartHref } from "@/lib/auth/urls";
 import { lookupUsers } from "@/lib/auth/users";
 import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
-import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
+import { listAvailableProviderProjects, listMyAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
 import {
   providerDisplayName,
   resolveSourceProjectLabel,
@@ -70,29 +70,34 @@ export default async function ProjectDetailPage({
 
   const [
     threads,
-    orgThreads,
-    availableSources,
+    myThreads,
+    mySources,
+    orgSources,
     explicitThreadIds,
-    linkedSourceIds,
+    myLinkedSourceIds,
   ] = await Promise.all([
     listProjectThreads(project.id),
-    listAgentThreads(activeOrg.id),
+    listAgentThreads(activeOrg.id, { ownerUserId: session.user.id }),
+    listMyAvailableProviderProjects(activeOrg.id, session.user.id),
     listAvailableProviderProjects(activeOrg.id),
     listExplicitProjectThreadIds(project.id),
-    listProjectSourceProjectIds(project.id),
+    listProjectSourceProjectIds(project.id, {
+      addedByUserId: session.user.id,
+    }),
   ]);
 
   const [memberNames, ownerNames] = await Promise.all([
     lookupUsers(members.map((m) => m.userId)),
-    resolveThreadOwnerNames(orgThreads, session),
+    resolveThreadOwnerNames(threads, session),
   ]);
-  const sourceProjects = availableSources.map((source) => ({
+  const sourceProjects = mySources.map((source) => ({
     id: source.id,
     name: source.name,
     providerLabel: providerDisplayName(source.provider),
     projectId: source.projectId,
   }));
-  const sourceCatalog = availableSources.map((source) => ({
+  // Org-wide catalog so mixed teammate threads still resolve source labels.
+  const sourceCatalog = orgSources.map((source) => ({
     name: source.name,
     projectId: source.projectId,
   }));
@@ -106,7 +111,7 @@ export default async function ProjectDetailPage({
   const isOwner = project.ownerUserId === user.id;
   const displayName = user.name || user.email;
   const agentCount = new Set(
-    orgThreads.map((t) => t.lastAgentName).filter(Boolean),
+    threads.map((t) => t.lastAgentName).filter(Boolean),
   ).size;
   const activityLines = buildProjectActivityFeed(threads);
   const recentActivity = activityLines.slice(-5).reverse();
@@ -117,13 +122,7 @@ export default async function ProjectDetailPage({
     ? (ownerNames[selectedThread.ownerUserId] ?? selectedThread.ownerUserId)
     : null;
   const selectedSourceProject = selectedThread
-    ? resolveSourceProjectLabel(
-        selectedThread.projectContext,
-        availableSources.map((s) => ({
-          name: s.name,
-          projectId: s.projectId,
-        })),
-      )
+    ? resolveSourceProjectLabel(selectedThread.projectContext, sourceCatalog)
     : null;
 
   return (
@@ -154,7 +153,7 @@ export default async function ProjectDetailPage({
             <ManageProjectThreads
               projectId={project.id}
               currentUserId={user.id}
-              threads={orgThreads.map((thread) => ({
+              threads={myThreads.map((thread) => ({
                 id: thread.id,
                 title: thread.title,
                 lastAgentName: thread.lastAgentName,
@@ -165,7 +164,7 @@ export default async function ProjectDetailPage({
               }))}
               selectedThreadIds={explicitThreadIds}
               sourceProjects={sourceProjects}
-              selectedSourceProjectIds={linkedSourceIds}
+              selectedSourceProjectIds={myLinkedSourceIds}
             />
           </div>
           <GroupedThreadList
@@ -173,6 +172,9 @@ export default async function ProjectDetailPage({
             catalog={sourceCatalog}
             activeThreadId={selectedThread?.id}
             linkTarget={{ kind: "project", projectId: project.id }}
+            ownerNames={ownerNames}
+            showMeta
+            showOwner
           />
         </div>
 
@@ -312,7 +314,7 @@ export default async function ProjectDetailPage({
               {displayName}
             </span>
           </div>
-          {orgThreads.length > 0 ? (
+          {threads.length > 0 ? (
             <p className="mt-3 text-sm text-muted">
               {agentCount} {agentCount === 1 ? "agent" : "agents"}
             </p>

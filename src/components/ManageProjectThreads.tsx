@@ -162,7 +162,8 @@ export function ManageProjectThreads({
               </h2>
               <p className="mt-1 text-sm text-muted">
                 Include whole source projects (new threads stay included) and/or
-                pick individual threads. Other members manage their own threads.
+                pick individual threads. You only see your own; other members
+                manage theirs. Everyone sees the mixed set on this project.
               </p>
             </div>
 

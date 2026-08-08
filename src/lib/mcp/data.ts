@@ -204,7 +204,10 @@ export async function mcpSearchThreads(
     if (!project) return [];
     rows = await listProjectThreads(project.id);
   } else {
-    rows = await listAgentThreads(owner.orgId);
+    // Outside a project, only the caller's own threads are searchable.
+    rows = await listAgentThreads(owner.orgId, {
+      ownerUserId: owner.ownerUserId,
+    });
   }
 
   const scored = rows
