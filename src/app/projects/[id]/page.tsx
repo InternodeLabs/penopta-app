@@ -172,9 +172,7 @@ export default async function ProjectDetailPage({
             threads={threads}
             catalog={sourceCatalog}
             activeThreadId={selectedThread?.id}
-            hrefForThread={(threadId) =>
-              `/projects/${project.id}?thread=${threadId}`
-            }
+            linkTarget={{ kind: "project", projectId: project.id }}
           />
         </div>
 

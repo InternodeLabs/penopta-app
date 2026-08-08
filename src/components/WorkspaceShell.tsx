@@ -119,7 +119,7 @@ export function WorkspaceShell({
             threads={threads}
             catalog={sourceCatalog}
             activeThreadId={activeThreadId}
-            hrefForThread={(id) => `/threads/${id}`}
+            linkTarget={{ kind: "thread" }}
             ownerNames={ownerNames}
             showMeta
           />

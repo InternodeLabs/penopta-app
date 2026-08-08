@@ -10,10 +10,25 @@ import {
 
 type SourceCatalogEntry = { name: string; projectId: string };
 
+/** Where sidebar thread links should go (serializable — no function props). */
+export type ThreadListLinkTarget =
+  | { kind: "thread" }
+  | { kind: "project"; projectId: string };
+
 const INITIAL_VISIBLE = 4;
 
 function agentGroupKey(projectLabel: string, agent: string): string {
   return `${projectLabel}:${agent}`;
+}
+
+function hrefForThread(
+  target: ThreadListLinkTarget,
+  threadId: string,
+): string {
+  if (target.kind === "project") {
+    return `/projects/${target.projectId}?thread=${threadId}`;
+  }
+  return `/threads/${threadId}`;
 }
 
 /** Sidebar thread list grouped by source project, then agent. */
@@ -21,14 +36,14 @@ export function GroupedThreadList({
   threads,
   catalog = [],
   activeThreadId,
-  hrefForThread,
+  linkTarget,
   ownerNames = {},
   showMeta = false,
 }: {
   threads: GroupableThread[];
   catalog?: SourceCatalogEntry[];
   activeThreadId?: string | null;
-  hrefForThread: (threadId: string) => string;
+  linkTarget: ThreadListLinkTarget;
   ownerNames?: Record<string, string>;
   /** When true, show owner · status under each thread title. */
   showMeta?: boolean;
@@ -107,7 +122,7 @@ export function GroupedThreadList({
                         key={thread.id}
                         thread={thread}
                         active={thread.id === activeThreadId}
-                        href={hrefForThread(thread.id)}
+                        href={hrefForThread(linkTarget, thread.id)}
                         ownerNames={ownerNames}
                         showMeta={showMeta}
                       />
