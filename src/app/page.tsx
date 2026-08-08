@@ -49,6 +49,7 @@ export default async function HomePage({
     id: project.id,
     name: project.name,
     providerLabel: providerDisplayName(project.provider),
+    projectId: project.projectId,
   }));
 
   return (

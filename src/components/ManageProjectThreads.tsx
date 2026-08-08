@@ -32,6 +32,8 @@ export type SourceProjectOption = {
   id: string;
   name: string;
   providerLabel: string;
+  /** Provider external project id — used to resolve thread source labels. */
+  projectId?: string;
 };
 
 /** Sidebar control + dialog to choose source projects and your agent threads. */

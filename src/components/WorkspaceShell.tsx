@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AddProjectButton } from "@/components/AddProjectButton";
 import { BrandLogo } from "@/components/Brand";
+import { GroupedThreadList } from "@/components/GroupedThreadList";
 import type { SourceProjectOption } from "@/components/ManageProjectThreads";
 import { OrgSwitcher, type OrgSwitcherItem } from "@/components/OrgSwitcher";
 import type { SessionUser } from "@/lib/auth/session";
@@ -9,7 +10,15 @@ import type { AgentThreadRow, ProjectRow } from "@/lib/db/schema";
 
 type SidebarThread = Pick<
   AgentThreadRow,
-  "id" | "title" | "status" | "lastAgentName" | "ownerUserId"
+  | "id"
+  | "title"
+  | "status"
+  | "lastAgentName"
+  | "ownerUserId"
+  | "projectContext"
+  | "threadUpdatedAt"
+  | "lastSyncedAt"
+  | "sourceActivity"
 >;
 
 type SidebarProject = Pick<ProjectRow, "id" | "name">;
@@ -42,6 +51,10 @@ export function WorkspaceShell({
   const myThreadCount = threads.filter(
     (thread) => thread.ownerUserId === user.id,
   ).length;
+  const sourceCatalog = sourceProjects.map((project) => ({
+    name: project.name,
+    projectId: project.projectId ?? "",
+  }));
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
@@ -102,41 +115,14 @@ export function WorkspaceShell({
           <p className="shrink-0 text-[11px] font-semibold tracking-wider text-muted uppercase">
             Agent Threads
           </p>
-          {threads.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">No threads yet</p>
-          ) : (
-            <ul className="-mx-1 mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-              {threads.map((thread) => {
-                const active = thread.id === activeThreadId;
-                const ownerName =
-                  ownerNames[thread.ownerUserId] ?? thread.ownerUserId;
-                return (
-                  <li key={thread.id}>
-                    <Link
-                      href={`/threads/${thread.id}`}
-                      aria-current={active ? "page" : undefined}
-                      className={`block rounded-md px-2 py-1.5 transition ${
-                        active ? "bg-black/10" : "hover:bg-black/5"
-                      }`}
-                    >
-                      <p
-                        className="truncate text-sm text-foreground"
-                        title={thread.title}
-                      >
-                        {thread.title || "Untitled thread"}
-                      </p>
-                      <p
-                        className="mt-0.5 truncate text-[11px] text-muted"
-                        title={ownerName}
-                      >
-                        {ownerName} · {thread.lastAgentName} · {thread.status}
-                      </p>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <GroupedThreadList
+            threads={threads}
+            catalog={sourceCatalog}
+            activeThreadId={activeThreadId}
+            hrefForThread={(id) => `/threads/${id}`}
+            ownerNames={ownerNames}
+            showMeta
+          />
         </div>
 
         {activeOrgId ? (

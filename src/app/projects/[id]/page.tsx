@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { BrandLogo } from "@/components/Brand";
+import { GroupedThreadList } from "@/components/GroupedThreadList";
 import { ManageProjectThreads } from "@/components/ManageProjectThreads";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import {
@@ -20,7 +21,10 @@ import { lookupUsers } from "@/lib/auth/users";
 import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
-import { providerDisplayName } from "@/lib/integrations/provider-projects-view";
+import {
+  providerDisplayName,
+  resolveSourceProjectLabel,
+} from "@/lib/integrations/provider-projects-view";
 import { getVisibleProject } from "@/lib/projects/data";
 import {
   listAgentThreads,
@@ -86,6 +90,11 @@ export default async function ProjectDetailPage({
     id: source.id,
     name: source.name,
     providerLabel: providerDisplayName(source.provider),
+    projectId: source.projectId,
+  }));
+  const sourceCatalog = availableSources.map((source) => ({
+    name: source.name,
+    projectId: source.projectId,
   }));
   const memberLabels = members.map((m) =>
     m.userId === session.user.id
@@ -106,6 +115,15 @@ export default async function ProjectDetailPage({
     : null;
   const selectedOwnerName = selectedThread
     ? (ownerNames[selectedThread.ownerUserId] ?? selectedThread.ownerUserId)
+    : null;
+  const selectedSourceProject = selectedThread
+    ? resolveSourceProjectLabel(
+        selectedThread.projectContext,
+        availableSources.map((s) => ({
+          name: s.name,
+          projectId: s.projectId,
+        })),
+      )
     : null;
 
   return (
@@ -150,29 +168,14 @@ export default async function ProjectDetailPage({
               selectedSourceProjectIds={linkedSourceIds}
             />
           </div>
-          {threads.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">No threads yet</p>
-          ) : (
-            <ul className="-mx-1 mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
-              {threads.map((thread) => {
-                const active = thread.id === selectedThread?.id;
-                return (
-                  <li key={thread.id}>
-                    <Link
-                      href={`/projects/${project.id}?thread=${thread.id}`}
-                      aria-current={active ? "page" : undefined}
-                      className={`block truncate rounded-md px-2 py-1.5 text-sm text-foreground transition ${
-                        active ? "bg-black/10" : "hover:bg-black/5"
-                      }`}
-                      title={thread.title}
-                    >
-                      {thread.title || "Untitled thread"}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <GroupedThreadList
+            threads={threads}
+            catalog={sourceCatalog}
+            activeThreadId={selectedThread?.id}
+            hrefForThread={(threadId) =>
+              `/projects/${project.id}?thread=${threadId}`
+            }
+          />
         </div>
 
         <div className="shrink-0 border-t border-border px-4 py-4">
@@ -198,6 +201,12 @@ export default async function ProjectDetailPage({
                 {selectedThread.title || "Untitled thread"}
               </h2>
               <p className="mt-1 text-xs text-muted">
+                {selectedSourceProject ? (
+                  <>
+                    <span title="Source project">{selectedSourceProject}</span>
+                    {" · "}
+                  </>
+                ) : null}
                 {selectedOwnerName} · {selectedThread.lastAgentName} ·{" "}
                 {selectedThread.kind} · {selectedThread.status} · synced{" "}
                 {formatDistanceToNow(selectedThread.lastSyncedAt, {

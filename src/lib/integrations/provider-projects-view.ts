@@ -12,6 +12,20 @@ export function providerDisplayName(provider: ProviderProjectProvider): string {
   }
 }
 
+/**
+ * Friendly source-project label for a thread's `projectContext`, resolving
+ * catalog external ids to names when possible. Null when unset.
+ */
+export function resolveSourceProjectLabel(
+  projectContext: string | null | undefined,
+  catalog: Array<{ name: string; projectId: string }> = [],
+): string | null {
+  const raw = projectContext?.trim();
+  if (!raw) return null;
+  const match = catalog.find((p) => p.name === raw || p.projectId === raw);
+  return match?.name ?? raw;
+}
+
 /** Who first registered a catalog project. */
 export type ProviderProjectSource = "penopta_sync" | "skill";
 

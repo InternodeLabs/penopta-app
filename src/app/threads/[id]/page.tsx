@@ -6,7 +6,10 @@ import { WorkspaceShell } from "@/components/WorkspaceShell";
 import { getSession } from "@/lib/auth/server";
 import { loginStartHref } from "@/lib/auth/urls";
 import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
-import { providerDisplayName } from "@/lib/integrations/provider-projects-view";
+import {
+  providerDisplayName,
+  resolveSourceProjectLabel,
+} from "@/lib/integrations/provider-projects-view";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { listVisibleProjects } from "@/lib/projects/data";
@@ -34,10 +37,18 @@ export default async function ThreadPage({
 
   const ownerNames = await resolveThreadOwnerNames(threads, session);
   const ownerName = ownerNames[thread.ownerUserId] ?? thread.ownerUserId;
+  const sourceProjectLabel = resolveSourceProjectLabel(
+    thread.projectContext,
+    availableSources.map((project) => ({
+      name: project.name,
+      projectId: project.projectId,
+    })),
+  );
   const sourceProjects = availableSources.map((project) => ({
     id: project.id,
     name: project.name,
     providerLabel: providerDisplayName(project.provider),
+    projectId: project.projectId,
   }));
 
   return (
@@ -57,6 +68,12 @@ export default async function ThreadPage({
             {thread.title || "Untitled thread"}
           </h1>
           <p className="mt-1 text-xs text-muted">
+            {sourceProjectLabel ? (
+              <>
+                <span title="Source project">{sourceProjectLabel}</span>
+                {" · "}
+              </>
+            ) : null}
             {ownerName} · {thread.lastAgentName} · {thread.kind} ·{" "}
             {thread.status} · synced{" "}
             {formatDistanceToNow(thread.lastSyncedAt, { addSuffix: true })}
