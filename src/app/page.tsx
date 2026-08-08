@@ -1,6 +1,8 @@
 import { SignInCard } from "@/components/SignInCard";
 import { WorkspaceEmpty } from "@/components/WorkspaceEmpty";
 import { getSession } from "@/lib/auth/server";
+import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
+import { providerDisplayName } from "@/lib/integrations/provider-projects-view";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
 import { listVisibleProjects } from "@/lib/projects/data";
@@ -37,11 +39,17 @@ export default async function HomePage({
 
   const { activeOrg, memberships } = await resolveActiveOrg(session.user.id);
 
-  const [threads, projects] = await Promise.all([
+  const [threads, projects, availableSources] = await Promise.all([
     listAgentThreads(activeOrg.id),
     listVisibleProjects({ orgId: activeOrg.id, viewerUserId: session.user.id }),
+    listAvailableProviderProjects(activeOrg.id),
   ]);
   const ownerNames = await resolveThreadOwnerNames(threads, session);
+  const sourceProjects = availableSources.map((project) => ({
+    id: project.id,
+    name: project.name,
+    providerLabel: providerDisplayName(project.provider),
+  }));
 
   return (
     <WorkspaceEmpty
@@ -50,6 +58,7 @@ export default async function HomePage({
       activeOrgId={activeOrg.id}
       threads={threads}
       projects={projects}
+      sourceProjects={sourceProjects}
       ownerNames={ownerNames}
     />
   );

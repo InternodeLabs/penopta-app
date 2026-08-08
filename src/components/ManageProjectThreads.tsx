@@ -5,7 +5,19 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { setProjectThreadsAction } from "@/lib/projects/actions";
+import {
+  filterSourceProjects,
+  filterThreads,
+  MembershipFilterInput,
+  MembershipTabBar,
+  SourceProjectMembershipList,
+  ThreadMembershipList,
+  type MembershipTab,
+} from "@/components/ProjectMembershipPicker";
+import {
+  setProjectSourceProjectsAction,
+  setProjectThreadsAction,
+} from "@/lib/projects/actions";
 
 export type ThreadOption = {
   id: string;
@@ -16,31 +28,54 @@ export type ThreadOption = {
   ownerUserId: string;
 };
 
-/** Sidebar control + dialog to choose which of your agent threads belong to a project. */
+export type SourceProjectOption = {
+  id: string;
+  name: string;
+  providerLabel: string;
+};
+
+/** Sidebar control + dialog to choose source projects and your agent threads. */
 export function ManageProjectThreads({
   projectId,
   threads,
-  selectedIds,
+  selectedThreadIds,
+  sourceProjects,
+  selectedSourceProjectIds,
   currentUserId,
 }: {
   projectId: string;
   threads: ThreadOption[];
-  selectedIds: string[];
+  selectedThreadIds: string[];
+  sourceProjects: SourceProjectOption[];
+  selectedSourceProjectIds: string[];
   currentUserId: string;
 }) {
   const router = useRouter();
   const myThreads = threads.filter(
     (thread) => thread.ownerUserId === currentUserId,
   );
-  const mySelectedIds = selectedIds.filter((id) =>
+  const mySelectedIds = selectedThreadIds.filter((id) =>
     myThreads.some((thread) => thread.id === id),
   );
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set(mySelectedIds));
+  const [tab, setTab] = useState<MembershipTab>("threads");
+  const [filter, setFilter] = useState("");
+  const [selectedThreads, setSelectedThreads] = useState<Set<string>>(
+    new Set(mySelectedIds),
+  );
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(
+    new Set(selectedSourceProjectIds),
+  );
   const [pending, startTransition] = useTransition();
 
+  const filteredThreads = filterThreads(myThreads, filter);
+  const filteredProjects = filterSourceProjects(sourceProjects, filter);
+
   function openDialog() {
-    setSelected(new Set(mySelectedIds));
+    setSelectedThreads(new Set(mySelectedIds));
+    setSelectedSources(new Set(selectedSourceProjectIds));
+    setTab("threads");
+    setFilter("");
     setOpen(true);
   }
 
@@ -49,8 +84,22 @@ export function ManageProjectThreads({
     setOpen(false);
   }
 
-  function toggle(id: string) {
-    setSelected((prev) => {
+  function changeTab(next: MembershipTab) {
+    setTab(next);
+    setFilter("");
+  }
+
+  function toggleThread(id: string) {
+    setSelectedThreads((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSource(id: string) {
+    setSelectedSources((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -60,15 +109,22 @@ export function ManageProjectThreads({
 
   function save() {
     startTransition(async () => {
-      const result = await setProjectThreadsAction(
-        projectId,
-        Array.from(selected),
-      );
-      if (!result.ok) {
-        toast.error(result.error);
+      const [threadsResult, sourcesResult] = await Promise.all([
+        setProjectThreadsAction(projectId, Array.from(selectedThreads)),
+        setProjectSourceProjectsAction(
+          projectId,
+          Array.from(selectedSources),
+        ),
+      ]);
+      if (!threadsResult.ok) {
+        toast.error(threadsResult.error);
         return;
       }
-      toast.success("Threads updated");
+      if (!sourcesResult.ok) {
+        toast.error(sourcesResult.error);
+        return;
+      }
+      toast.success("Project updated");
       setOpen(false);
       router.refresh();
     });
@@ -79,8 +135,8 @@ export function ManageProjectThreads({
       <button
         type="button"
         onClick={openDialog}
-        aria-label="Add your threads"
-        title="Add your threads"
+        aria-label="Add source projects and threads"
+        title="Add source projects and threads"
         className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted transition hover:bg-black/5 hover:text-foreground"
       >
         <Plus aria-hidden className="h-3.5 w-3.5" />
@@ -91,7 +147,7 @@ export function ManageProjectThreads({
           className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="Add your threads to project"
+          aria-label="Add source projects and threads"
           onClick={close}
         >
           <div
@@ -100,46 +156,58 @@ export function ManageProjectThreads({
           >
             <div className="border-b border-border px-6 py-4">
               <h2 className="text-lg font-semibold tracking-tight">
-                Add your threads
+                Add to project
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Choose which of your agent threads are part of this project.
-                Other members manage their own.
+                Include whole source projects (new threads stay included) and/or
+                pick individual threads. Other members manage their own threads.
               </p>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-              {myThreads.length === 0 ? (
-                <p className="px-3 py-6 text-center text-sm text-muted">
-                  No agent threads of yours yet. Connect an agent to get
-                  started.
-                </p>
+            <div className="shrink-0 space-y-3 px-6 pt-4">
+              <MembershipTabBar
+                tab={tab}
+                onChange={changeTab}
+                threadCount={selectedThreads.size}
+                projectCount={selectedSources.size}
+              />
+              <MembershipFilterInput
+                value={filter}
+                onChange={setFilter}
+                placeholder={
+                  tab === "projects"
+                    ? "Filter projects…"
+                    : "Filter threads…"
+                }
+              />
+            </div>
+
+            <div
+              className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+              role="tabpanel"
+            >
+              {tab === "projects" ? (
+                <SourceProjectMembershipList
+                  projects={filteredProjects}
+                  selected={selectedSources}
+                  onToggle={toggleSource}
+                  emptyMessage={
+                    filter.trim()
+                      ? "No projects match that filter."
+                      : "No source projects yet. Sync from Penopta Sync or the hourly skill first."
+                  }
+                />
               ) : (
-                <ul className="space-y-0.5">
-                  {myThreads.map((thread) => {
-                    const checked = selected.has(thread.id);
-                    return (
-                      <li key={thread.id}>
-                        <label className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition hover:bg-background">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggle(thread.id)}
-                            className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm text-foreground">
-                              {thread.title || "Untitled thread"}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[11px] text-muted">
-                              {thread.lastAgentName} · {thread.status}
-                            </span>
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <ThreadMembershipList
+                  threads={filteredThreads}
+                  selected={selectedThreads}
+                  onToggle={toggleThread}
+                  emptyMessage={
+                    filter.trim()
+                      ? "No threads match that filter."
+                      : "No agent threads of yours yet. Connect an agent to get started."
+                  }
+                />
               )}
             </div>
 

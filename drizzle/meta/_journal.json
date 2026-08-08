@@ -85,6 +85,13 @@
       "when": 1786126715438,
       "tag": "0011_rapid_joystick",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786159891333,
+      "tag": "0012_broad_power_man",
+      "breakpoints": true
     }
   ]
 }

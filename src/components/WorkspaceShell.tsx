@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AddProjectButton } from "@/components/AddProjectButton";
 import { BrandLogo } from "@/components/Brand";
+import type { SourceProjectOption } from "@/components/ManageProjectThreads";
 import { OrgSwitcher, type OrgSwitcherItem } from "@/components/OrgSwitcher";
 import type { SessionUser } from "@/lib/auth/session";
 import type { AgentThreadRow, ProjectRow } from "@/lib/db/schema";
@@ -20,6 +21,7 @@ export function WorkspaceShell({
   activeOrgId,
   threads,
   projects = [],
+  sourceProjects = [],
   ownerNames = {},
   activeThreadId,
   activeProjectId,
@@ -30,12 +32,17 @@ export function WorkspaceShell({
   activeOrgId?: string;
   threads: SidebarThread[];
   projects?: SidebarProject[];
+  sourceProjects?: SourceProjectOption[];
   /** Map of ownerUserId → display name; falls back to the id when missing. */
   ownerNames?: Record<string, string>;
   activeThreadId?: string;
   activeProjectId?: string;
   children: React.ReactNode;
 }) {
+  const myThreadCount = threads.filter(
+    (thread) => thread.ownerUserId === user.id,
+  ).length;
+
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
       <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-[#f4f4f5]">
@@ -47,10 +54,8 @@ export function WorkspaceShell({
 
         <div className="shrink-0 px-3 pt-3">
           <AddProjectButton
-            enabled={
-              threads.filter((thread) => thread.ownerUserId === user.id)
-                .length >= 2
-            }
+            enabled={myThreadCount >= 2 || sourceProjects.length >= 1}
+            sourceProjects={sourceProjects}
             threads={threads
               .filter((thread) => thread.ownerUserId === user.id)
               .map((thread) => ({

@@ -4,7 +4,19 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import type { ThreadOption } from "@/components/ManageProjectThreads";
+import type {
+  SourceProjectOption,
+  ThreadOption,
+} from "@/components/ManageProjectThreads";
+import {
+  filterSourceProjects,
+  filterThreads,
+  MembershipFilterInput,
+  MembershipTabBar,
+  SourceProjectMembershipList,
+  ThreadMembershipList,
+  type MembershipTab,
+} from "@/components/ProjectMembershipPicker";
 import { VisibilityField } from "@/components/VisibilityField";
 import {
   createProjectAction,
@@ -13,34 +25,54 @@ import {
 
 const MIN_THREADS = 2;
 
-/** Name + thread picker for creating a project. Requires at least two threads. */
+/** Name + tabbed source-project / thread picker for creating a Penopta project. */
 export function NewProjectDialog({
   open,
   onClose,
   threads,
+  sourceProjects = [],
 }: {
   open: boolean;
   onClose: () => void;
   threads: ThreadOption[];
+  sourceProjects?: SourceProjectOption[];
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [visibility, setVisibility] = useState<ProjectVisibility>("public");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<MembershipTab>("threads");
+  const [filter, setFilter] = useState("");
+  const [selectedThreads, setSelectedThreads] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(
+    new Set(),
+  );
   const [pending, startTransition] = useTransition();
 
   if (!open) return null;
+
+  const filteredThreads = filterThreads(threads, filter);
+  const filteredProjects = filterSourceProjects(sourceProjects, filter);
 
   function close() {
     if (pending) return;
     setName("");
     setVisibility("public");
-    setSelected(new Set());
+    setTab("threads");
+    setFilter("");
+    setSelectedThreads(new Set());
+    setSelectedSources(new Set());
     onClose();
   }
 
-  function toggle(id: string) {
-    setSelected((prev) => {
+  function changeTab(next: MembershipTab) {
+    setTab(next);
+    setFilter("");
+  }
+
+  function toggleThread(id: string) {
+    setSelectedThreads((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -48,17 +80,32 @@ export function NewProjectDialog({
     });
   }
 
+  function toggleSource(id: string) {
+    setSelectedSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const hasEnough =
+    selectedSources.size >= 1 || selectedThreads.size >= MIN_THREADS;
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (selected.size < MIN_THREADS) {
-      toast.error("Select at least two of your agent threads.");
+    if (!hasEnough) {
+      toast.error(
+        "Select a source project or at least two of your agent threads.",
+      );
       return;
     }
     startTransition(async () => {
       const result = await createProjectAction(
         name,
-        Array.from(selected),
+        Array.from(selectedThreads),
         visibility,
+        Array.from(selectedSources),
       );
       if (!result.ok) {
         toast.error(result.error);
@@ -67,13 +114,16 @@ export function NewProjectDialog({
       toast.success("Project created");
       setName("");
       setVisibility("public");
-      setSelected(new Set());
+      setTab("threads");
+      setFilter("");
+      setSelectedThreads(new Set());
+      setSelectedSources(new Set());
       onClose();
       router.push(`/projects/${result.id}`);
     });
   }
 
-  const canCreate = name.trim().length > 0 && selected.size >= MIN_THREADS;
+  const canCreate = name.trim().length > 0 && hasEnough;
 
   return (
     <div
@@ -93,7 +143,8 @@ export function NewProjectDialog({
             Start a project
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Name your project and pick at least two of your agent threads.
+            Name your project, then include source projects and/or individual
+            threads.
           </p>
         </div>
 
@@ -122,44 +173,60 @@ export function NewProjectDialog({
             />
           </div>
 
-          <p className="mt-5 text-sm font-medium text-foreground">
-            Your agent threads
-            <span className="ml-1.5 font-normal text-muted">
-              ({selected.size} selected · {MIN_THREADS} required)
-            </span>
-          </p>
+          <div className="mt-5 space-y-3">
+            <MembershipTabBar
+              tab={tab}
+              onChange={changeTab}
+              threadCount={selectedThreads.size}
+              projectCount={selectedSources.size}
+            />
+            <MembershipFilterInput
+              value={filter}
+              onChange={setFilter}
+              placeholder={
+                tab === "projects" ? "Filter projects…" : "Filter threads…"
+              }
+            />
+          </div>
 
-          {threads.length === 0 ? (
-            <p className="mt-3 text-sm text-muted">
-              No agent threads of yours yet. Connect an agent to get started.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-0.5">
-              {threads.map((thread) => {
-                const checked = selected.has(thread.id);
-                return (
-                  <li key={thread.id}>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2 transition hover:bg-background">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggle(thread.id)}
-                        className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm text-foreground">
-                          {thread.title || "Untitled thread"}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[11px] text-muted">
-                          {thread.lastAgentName} · {thread.status}
-                        </span>
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="mt-3" role="tabpanel">
+            {tab === "projects" ? (
+              <>
+                <p className="mb-2 text-xs text-muted">
+                  New threads in a selected source project stay included
+                  automatically.
+                </p>
+                <SourceProjectMembershipList
+                  projects={filteredProjects}
+                  selected={selectedSources}
+                  onToggle={toggleSource}
+                  emptyMessage={
+                    filter.trim()
+                      ? "No projects match that filter."
+                      : "No source projects yet. Sync from Penopta Sync or the hourly skill first — or use the Threads tab."
+                  }
+                />
+              </>
+            ) : (
+              <>
+                <p className="mb-2 text-xs text-muted">
+                  {selectedSources.size === 0
+                    ? `Select at least ${MIN_THREADS} threads, or switch to Projects.`
+                    : "Optional — add individual threads beyond source projects."}
+                </p>
+                <ThreadMembershipList
+                  threads={filteredThreads}
+                  selected={selectedThreads}
+                  onToggle={toggleThread}
+                  emptyMessage={
+                    filter.trim()
+                      ? "No threads match that filter."
+                      : "No agent threads of yours yet. Connect an agent to get started."
+                  }
+                />
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border px-6 py-4">

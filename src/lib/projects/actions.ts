@@ -7,7 +7,13 @@ import { revalidatePath } from "next/cache";
 
 import { getSession } from "@/lib/auth/server";
 import { db } from "@/lib/db/client";
-import { agentThreads, projects, projectThreads } from "@/lib/db/schema";
+import {
+  agentThreads,
+  availableProviderProjects,
+  projects,
+  projectSourceProjects,
+  projectThreads,
+} from "@/lib/db/schema";
 import { resolveActiveOrg } from "@/lib/orgs/data";
 import { getVisibleProject } from "@/lib/projects/data";
 
@@ -31,11 +37,17 @@ function slugify(name: string): string {
   return base || "project";
 }
 
-/** Create a project owned by the current user, returning its id. */
+/**
+ * Create a project owned by the current user.
+ * Membership can be explicit agent threads and/or linked source (provider)
+ * projects. Requires at least two of the creator's threads, or at least one
+ * source project.
+ */
 export async function createProjectAction(
   name: string,
   threadIds: string[],
   visibility: ProjectVisibility = "public",
+  sourceProjectIds: string[] = [],
 ): Promise<CreateProjectState> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in to start a project." };
@@ -46,28 +58,53 @@ export async function createProjectAction(
     return { ok: false, error: "Pick private or public." };
   }
 
-  const unique = Array.from(new Set(threadIds));
-  if (unique.length < 2) {
-    return { ok: false, error: "Select at least two of your agent threads." };
+  const uniqueThreads = Array.from(new Set(threadIds));
+  const uniqueSources = Array.from(new Set(sourceProjectIds));
+  if (uniqueSources.length === 0 && uniqueThreads.length < 2) {
+    return {
+      ok: false,
+      error: "Select a source project or at least two of your agent threads.",
+    };
   }
 
   try {
     const { activeOrg } = await resolveActiveOrg(session.user.id);
 
     // New projects can only include the creator's own threads.
-    const valid = await db
-      .select({ id: agentThreads.id })
-      .from(agentThreads)
-      .where(
-        and(
-          eq(agentThreads.orgId, activeOrg.id),
-          eq(agentThreads.ownerUserId, session.user.id),
-          inArray(agentThreads.id, unique),
-        ),
-      );
-    const validIds = valid.map((t) => t.id);
-    if (validIds.length < 2) {
-      return { ok: false, error: "Select at least two of your agent threads." };
+    const validThreads =
+      uniqueThreads.length > 0
+        ? await db
+            .select({ id: agentThreads.id })
+            .from(agentThreads)
+            .where(
+              and(
+                eq(agentThreads.orgId, activeOrg.id),
+                eq(agentThreads.ownerUserId, session.user.id),
+                inArray(agentThreads.id, uniqueThreads),
+              ),
+            )
+        : [];
+    const validThreadIds = validThreads.map((t) => t.id);
+
+    const validSources =
+      uniqueSources.length > 0
+        ? await db
+            .select({ id: availableProviderProjects.id })
+            .from(availableProviderProjects)
+            .where(
+              and(
+                eq(availableProviderProjects.orgId, activeOrg.id),
+                inArray(availableProviderProjects.id, uniqueSources),
+              ),
+            )
+        : [];
+    const validSourceIds = validSources.map((s) => s.id);
+
+    if (validSourceIds.length === 0 && validThreadIds.length < 2) {
+      return {
+        ok: false,
+        error: "Select a source project or at least two of your agent threads.",
+      };
     }
 
     let slug = slugify(trimmed);
@@ -89,14 +126,27 @@ export async function createProjectAction(
       })
       .returning({ id: projects.id });
 
-    await db.insert(projectThreads).values(
-      validIds.map((agentThreadId) => ({
-        orgId: activeOrg.id,
-        projectId: row.id,
-        agentThreadId,
-        addedByUserId: session.user.id,
-      })),
-    );
+    if (validThreadIds.length > 0) {
+      await db.insert(projectThreads).values(
+        validThreadIds.map((agentThreadId) => ({
+          orgId: activeOrg.id,
+          projectId: row.id,
+          agentThreadId,
+          addedByUserId: session.user.id,
+        })),
+      );
+    }
+
+    if (validSourceIds.length > 0) {
+      await db.insert(projectSourceProjects).values(
+        validSourceIds.map((availableProviderProjectId) => ({
+          orgId: activeOrg.id,
+          projectId: row.id,
+          availableProviderProjectId,
+          addedByUserId: session.user.id,
+        })),
+      );
+    }
 
     revalidatePath("/");
     revalidatePath(`/projects/${row.id}`);
@@ -235,6 +285,7 @@ export type SetProjectThreadsState =
  * Replace the current user's agent threads on a visible org project.
  * Other members' thread links are left untouched. Only the caller's own
  * threads in the active org are accepted; unknown ids are ignored.
+ * Source-project links are unchanged (managed separately).
  */
 export async function setProjectThreadsAction(
   projectId: string,
@@ -311,6 +362,83 @@ export async function setProjectThreadsAction(
     return {
       ok: false,
       error: "Couldn't update the project threads. Try again.",
+    };
+  }
+}
+
+export type SetProjectSourceProjectsState =
+  | { ok: true; count: number }
+  | { ok: false; error: string };
+
+/**
+ * Replace source (provider) projects linked into a visible Penopta project.
+ * Matching agent threads are included automatically via virtual membership.
+ */
+export async function setProjectSourceProjectsAction(
+  projectId: string,
+  sourceProjectIds: string[],
+): Promise<SetProjectSourceProjectsState> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Sign in to edit this project." };
+
+  try {
+    const { activeOrg } = await resolveActiveOrg(session.user.id);
+
+    const project = await getVisibleProject(
+      projectId,
+      activeOrg.id,
+      session.user.id,
+    );
+    if (!project) return { ok: false, error: "Project not found." };
+
+    const unique = Array.from(new Set(sourceProjectIds));
+    const valid = unique.length
+      ? await db
+          .select({ id: availableProviderProjects.id })
+          .from(availableProviderProjects)
+          .where(
+            and(
+              eq(availableProviderProjects.orgId, activeOrg.id),
+              inArray(availableProviderProjects.id, unique),
+            ),
+          )
+      : [];
+    const validIds = valid.map((s) => s.id);
+
+    const existing = await db
+      .select({ id: projectSourceProjects.id })
+      .from(projectSourceProjects)
+      .where(eq(projectSourceProjects.projectId, projectId));
+
+    if (existing.length > 0) {
+      await db
+        .delete(projectSourceProjects)
+        .where(
+          inArray(
+            projectSourceProjects.id,
+            existing.map((row) => row.id),
+          ),
+        );
+    }
+
+    if (validIds.length > 0) {
+      await db.insert(projectSourceProjects).values(
+        validIds.map((availableProviderProjectId) => ({
+          orgId: activeOrg.id,
+          projectId,
+          availableProviderProjectId,
+          addedByUserId: session.user.id,
+        })),
+      );
+    }
+
+    revalidatePath(`/projects/${projectId}`);
+    return { ok: true, count: validIds.length };
+  } catch (err) {
+    console.error("setProjectSourceProjectsAction", err);
+    return {
+      ok: false,
+      error: "Couldn't update source projects. Try again.",
     };
   }
 }

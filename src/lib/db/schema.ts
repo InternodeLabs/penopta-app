@@ -379,6 +379,44 @@ export type AvailableProviderProjectRow =
   typeof availableProviderProjects.$inferSelect;
 
 /**
+ * Join table: provider (source) projects included in a Penopta project.
+ * Membership is virtual — matching agent threads (by project_context) are
+ * included automatically, including ones synced later. Distinct from
+ * `project_thread` (explicit per-thread picks) and from `tracked` on the
+ * catalog (sync allowlist only).
+ */
+export const projectSourceProjects = pgTable(
+  "project_source_project",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    availableProviderProjectId: uuid("available_provider_project_id")
+      .notNull()
+      .references(() => availableProviderProjects.id, { onDelete: "cascade" }),
+    /** Portal user who linked the source project. */
+    addedByUserId: text("added_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("project_source_project_project_source_uidx").on(
+      t.projectId,
+      t.availableProviderProjectId,
+    ),
+    index("project_source_project_project_idx").on(t.projectId),
+    index("project_source_project_source_idx").on(t.availableProviderProjectId),
+  ],
+);
+
+export type ProjectSourceProjectRow = typeof projectSourceProjects.$inferSelect;
+
+/**
  * Last skill-version report from a scheduled sync for an org + provider.
  * Written whenever MCP sync tools see a skillVersion (or an hourly run that
  * omitted it). The integrations UI re-evaluates against SYNC_SKILL_VERSION.

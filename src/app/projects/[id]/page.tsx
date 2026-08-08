@@ -19,8 +19,15 @@ import { loginStartHref } from "@/lib/auth/urls";
 import { lookupUsers } from "@/lib/auth/users";
 import { listOrgMembers, resolveActiveOrg } from "@/lib/orgs/data";
 import { toOrgSwitcherItems } from "@/lib/orgs/view";
+import { listAvailableProviderProjects } from "@/lib/integrations/provider-projects-data";
+import { providerDisplayName } from "@/lib/integrations/provider-projects-view";
 import { getVisibleProject } from "@/lib/projects/data";
-import { listAgentThreads, listProjectThreads } from "@/lib/threads/data";
+import {
+  listAgentThreads,
+  listExplicitProjectThreadIds,
+  listProjectSourceProjectIds,
+  listProjectThreads,
+} from "@/lib/threads/data";
 import { resolveThreadOwnerNames } from "@/lib/threads/owners";
 
 function initials(user: SessionUser): string {
@@ -57,15 +64,29 @@ export default async function ProjectDetailPage({
   ]);
   if (!project) notFound();
 
-  const [threads, orgThreads] = await Promise.all([
+  const [
+    threads,
+    orgThreads,
+    availableSources,
+    explicitThreadIds,
+    linkedSourceIds,
+  ] = await Promise.all([
     listProjectThreads(project.id),
     listAgentThreads(activeOrg.id),
+    listAvailableProviderProjects(activeOrg.id),
+    listExplicitProjectThreadIds(project.id),
+    listProjectSourceProjectIds(project.id),
   ]);
 
   const [memberNames, ownerNames] = await Promise.all([
     lookupUsers(members.map((m) => m.userId)),
     resolveThreadOwnerNames(orgThreads, session),
   ]);
+  const sourceProjects = availableSources.map((source) => ({
+    id: source.id,
+    name: source.name,
+    providerLabel: providerDisplayName(source.provider),
+  }));
   const memberLabels = members.map((m) =>
     m.userId === session.user.id
       ? "You"
@@ -124,7 +145,9 @@ export default async function ProjectDetailPage({
                   ownerNames[thread.ownerUserId] ?? thread.ownerUserId,
                 ownerUserId: thread.ownerUserId,
               }))}
-              selectedIds={threads.map((thread) => thread.id)}
+              selectedThreadIds={explicitThreadIds}
+              sourceProjects={sourceProjects}
+              selectedSourceProjectIds={linkedSourceIds}
             />
           </div>
           {threads.length === 0 ? (

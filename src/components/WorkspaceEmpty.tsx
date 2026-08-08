@@ -1,6 +1,7 @@
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 
+import type { SourceProjectOption } from "@/components/ManageProjectThreads";
 import type { OrgSwitcherItem } from "@/components/OrgSwitcher";
 import { StartProjectModal } from "@/components/StartProjectModal";
 import { WorkspaceShell } from "@/components/WorkspaceShell";
@@ -14,6 +15,7 @@ export function WorkspaceEmpty({
   activeOrgId,
   threads = [],
   projects = [],
+  sourceProjects = [],
   ownerNames = {},
 }: {
   user: SessionUser;
@@ -21,12 +23,13 @@ export function WorkspaceEmpty({
   activeOrgId?: string;
   threads?: AgentThreadRow[];
   projects?: ProjectRow[];
+  sourceProjects?: SourceProjectOption[];
   ownerNames?: Record<string, string>;
 }) {
   const myThreads = threads.filter(
     (thread) => thread.ownerUserId === user.id,
   );
-  const canStartProject = myThreads.length >= 2;
+  const canStartProject = myThreads.length >= 2 || sourceProjects.length >= 1;
   const threadOptions = myThreads.map((thread) => ({
     id: thread.id,
     title: thread.title,
@@ -43,11 +46,15 @@ export function WorkspaceEmpty({
       activeOrgId={activeOrgId}
       threads={threads}
       projects={projects}
+      sourceProjects={sourceProjects}
       ownerNames={ownerNames}
     >
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
         {canStartProject ? (
-          <StartProjectModal threads={threadOptions} />
+          <StartProjectModal
+            threads={threadOptions}
+            sourceProjects={sourceProjects}
+          />
         ) : (
           <div className="w-full max-w-sm rounded-2xl border border-border bg-surface px-8 py-9 text-center shadow-sm">
             <MessageSquare
@@ -62,7 +69,7 @@ export function WorkspaceEmpty({
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
               {myThreads.length === 1
-                ? "Projects need at least two of your agent threads. Connect another agent or sync another conversation."
+                ? "Projects need a source project or at least two of your agent threads. Sync another conversation, or connect another agent."
                 : "Connect your chat to start collaborating with others via your agents."}
             </p>
             <Link

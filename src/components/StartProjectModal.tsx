@@ -3,11 +3,20 @@
 import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 
-import type { ThreadOption } from "@/components/ManageProjectThreads";
+import type {
+  SourceProjectOption,
+  ThreadOption,
+} from "@/components/ManageProjectThreads";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
 
 /** Empty-state card + dialog for starting a project once agents are connected. */
-export function StartProjectModal({ threads }: { threads: ThreadOption[] }) {
+export function StartProjectModal({
+  threads,
+  sourceProjects = [],
+}: {
+  threads: ThreadOption[];
+  sourceProjects?: SourceProjectOption[];
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,8 +31,8 @@ export function StartProjectModal({ threads }: { threads: ThreadOption[] }) {
           Start a project
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Group at least two of your agent threads into a project to organize and
-          share the work.
+          Group source projects and/or individual agent threads into a Penopta
+          project to organize and share the work.
         </p>
         <button
           type="button"
@@ -38,6 +47,7 @@ export function StartProjectModal({ threads }: { threads: ThreadOption[] }) {
         open={open}
         onClose={() => setOpen(false)}
         threads={threads}
+        sourceProjects={sourceProjects}
       />
     </>
   );

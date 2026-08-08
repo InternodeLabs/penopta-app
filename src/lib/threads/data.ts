@@ -1,8 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/client";
 import {
   agentThreads,
+  availableProviderProjects,
+  projectSourceProjects,
   projectThreads,
   type AgentThreadRow,
 } from "@/lib/db/schema";
@@ -31,18 +33,81 @@ export async function listSyncedAgentNames(orgId: string): Promise<string[]> {
   return rows.map((r) => r.name);
 }
 
-/** Agent threads a user has added to a project, most recently synced first. */
+/**
+ * Agent threads in a Penopta project: explicit `project_thread` picks plus
+ * threads whose `project_context` matches a linked source (provider) project.
+ * Deduped; most recently synced first.
+ */
 export async function listProjectThreads(
   projectId: string,
 ): Promise<AgentThreadRow[]> {
-  const rows = await db
-    .select({ thread: agentThreads })
-    .from(projectThreads)
-    .innerJoin(agentThreads, eq(agentThreads.id, projectThreads.agentThreadId))
-    .where(eq(projectThreads.projectId, projectId))
-    .orderBy(desc(agentThreads.lastSyncedAt));
+  const [explicit, viaSource] = await Promise.all([
+    db
+      .select({ thread: agentThreads })
+      .from(projectThreads)
+      .innerJoin(
+        agentThreads,
+        eq(agentThreads.id, projectThreads.agentThreadId),
+      )
+      .where(eq(projectThreads.projectId, projectId)),
+    db
+      .select({ thread: agentThreads })
+      .from(projectSourceProjects)
+      .innerJoin(
+        availableProviderProjects,
+        eq(
+          availableProviderProjects.id,
+          projectSourceProjects.availableProviderProjectId,
+        ),
+      )
+      .innerJoin(
+        agentThreads,
+        and(
+          eq(agentThreads.orgId, projectSourceProjects.orgId),
+          or(
+            eq(agentThreads.projectContext, availableProviderProjects.name),
+            eq(
+              agentThreads.projectContext,
+              availableProviderProjects.externalProjectId,
+            ),
+          ),
+        ),
+      )
+      .where(eq(projectSourceProjects.projectId, projectId)),
+  ]);
 
-  return rows.map((r) => r.thread);
+  const byId = new Map<string, AgentThreadRow>();
+  for (const row of [...explicit, ...viaSource]) {
+    byId.set(row.thread.id, row.thread);
+  }
+
+  return Array.from(byId.values()).sort(
+    (a, b) => b.lastSyncedAt.getTime() - a.lastSyncedAt.getTime(),
+  );
+}
+
+/** Explicit per-thread links only (not source-project membership). */
+export async function listExplicitProjectThreadIds(
+  projectId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ agentThreadId: projectThreads.agentThreadId })
+    .from(projectThreads)
+    .where(eq(projectThreads.projectId, projectId));
+  return rows.map((r) => r.agentThreadId);
+}
+
+/** Catalog ids of source projects linked into a Penopta project. */
+export async function listProjectSourceProjectIds(
+  projectId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({
+      id: projectSourceProjects.availableProviderProjectId,
+    })
+    .from(projectSourceProjects)
+    .where(eq(projectSourceProjects.projectId, projectId));
+  return rows.map((r) => r.id);
 }
 
 /** A single thread in an org by its internal id, or null if not found. */
