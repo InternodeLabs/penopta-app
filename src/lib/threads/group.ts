@@ -57,6 +57,16 @@ function byRecentDesc(a: number, b: number): number {
   return b - a;
 }
 
+/** Most recent message across every thread in a project group. */
+export function projectRecentMessageAt(group: ThreadProjectGroup): number {
+  return Math.max(
+    0,
+    ...group.agents.flatMap((g) =>
+      g.threads.map((t) => threadRecentMessageAt(t)),
+    ),
+  );
+}
+
 /**
  * Group threads by source project, then by agent. Threads and groups are
  * ordered by most recent message (newest first).
@@ -110,17 +120,9 @@ export function groupThreadsByProjectAndAgent(
     },
   );
 
-  groups.sort((a, b) => {
-    const aRecent = Math.max(
-      0,
-      ...a.agents.flatMap((g) => g.threads.map((t) => threadRecentMessageAt(t))),
-    );
-    const bRecent = Math.max(
-      0,
-      ...b.agents.flatMap((g) => g.threads.map((t) => threadRecentMessageAt(t))),
-    );
-    return byRecentDesc(aRecent, bRecent);
-  });
+  groups.sort((a, b) =>
+    byRecentDesc(projectRecentMessageAt(a), projectRecentMessageAt(b)),
+  );
 
   return groups;
 }

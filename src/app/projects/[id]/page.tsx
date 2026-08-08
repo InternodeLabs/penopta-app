@@ -172,9 +172,6 @@ export default async function ProjectDetailPage({
             catalog={sourceCatalog}
             activeThreadId={selectedThread?.id}
             linkTarget={{ kind: "project", projectId: project.id }}
-            ownerNames={ownerNames}
-            showMeta
-            showOwner
           />
         </div>
 

@@ -113,14 +113,13 @@ export function WorkspaceShell({
           ) : null}
 
           <p className="shrink-0 text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Agent Threads
+            Your Agent Threads
           </p>
           <GroupedThreadList
             threads={threads}
             catalog={sourceCatalog}
             activeThreadId={activeThreadId}
             linkTarget={{ kind: "thread" }}
-            showMeta
           />
         </div>
 
